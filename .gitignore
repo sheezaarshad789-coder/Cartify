@@ -1,0 +1,23 @@
+*.iml
+.gradle
+.gradle-user-home
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Backend secrets + build artifacts
+backend/.env
+backend/__pycache__/
+backend/**/*.pyc
+**/__pycache__/
+*.pyc
