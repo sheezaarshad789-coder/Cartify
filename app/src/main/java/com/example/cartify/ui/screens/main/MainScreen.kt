@@ -12,12 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,15 +25,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.cartify.navigation.Screen
+import com.example.cartify.ui.ProfileViewModel
 import com.example.cartify.ui.screens.main.tabs.*
+import com.example.cartify.ui.screens.vendor.*
 
 @Composable
 fun MainScreen(rootNavController: NavHostController) {
@@ -45,7 +46,11 @@ fun MainScreen(rootNavController: NavHostController) {
     val forestGreen = Color(0xFF2E7D32)
     val lightBarGreen = Color(0xFFEBF3E8)
     
-    val items = listOf(
+    val profileViewModel: ProfileViewModel = viewModel()
+    val isVendorMode by profileViewModel.isVendorMode
+
+    // Customer Navigation Items
+    val customerItems = listOf(
         NavigationItem("Home", Screen.Home.route, Icons.Filled.Home, Icons.Outlined.Home),
         NavigationItem("Cart", Screen.Cart.route, Icons.Filled.ShoppingCart, Icons.Outlined.ShoppingCart),
         NavigationItem("Orders", Screen.Orders.route,
@@ -57,13 +62,26 @@ fun MainScreen(rootNavController: NavHostController) {
         NavigationItem("Profile", Screen.Profile.route, Icons.Filled.Person, Icons.Outlined.Person)
     )
 
+    // Vendor Navigation Items
+    val vendorItems = listOf(
+        NavigationItem("Dashboard", Screen.VendorDashboard.route, Icons.Filled.Dashboard, Icons.Outlined.Dashboard),
+        NavigationItem("Inventory", Screen.VendorInventory.route, Icons.Filled.Inventory, Icons.Outlined.Inventory),
+        NavigationItem("Add", Screen.AddProduct.route, Icons.Filled.AddCircle, Icons.Outlined.AddCircle),
+        NavigationItem("Messages", Screen.Messages.route,
+            Icons.AutoMirrored.Filled.Chat, Icons.AutoMirrored.Outlined.Chat
+        ),
+        NavigationItem("Profile", Screen.Profile.route, Icons.Filled.Person, Icons.Outlined.Person)
+    )
+
+    val currentItems = if (isVendorMode) vendorItems else customerItems
+
     Scaffold(
         bottomBar = {
             Surface(
                 modifier = Modifier
                     .navigationBarsPadding() 
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 8.dp, top = 0.dp) 
+                    .padding(start = 12.dp, end = 12.dp, bottom = 8.dp) 
                     .shadow(8.dp, RoundedCornerShape(24.dp)),
                 shape = RoundedCornerShape(24.dp),
                 color = lightBarGreen,
@@ -79,7 +97,7 @@ fun MainScreen(rootNavController: NavHostController) {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     
-                    items.forEach { item ->
+                    currentItems.forEach { item ->
                         val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
                         
                         CustomNavigationItem(
@@ -105,17 +123,38 @@ fun MainScreen(rootNavController: NavHostController) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(
-                top = innerPadding.calculateTopPadding(),
-                bottom = innerPadding.calculateBottomPadding() - 35.dp // Reduces the white space above the bar
-            )
+            startDestination = if (isVendorMode) Screen.VendorDashboard.route else Screen.Home.route,
+            modifier = Modifier.padding(innerPadding)
         ) {
+            // Shared Screens
+            composable(Screen.Profile.route) { ProfileScreen(navController, rootNavController, profileViewModel) }
+            composable(Screen.Messages.route) { MessagesScreen(navController, rootNavController) }
+
+            // Customer Specific Screens
             composable(Screen.Home.route) { HomeScreen(navController, rootNavController) }
             composable(Screen.Cart.route) { CartScreen(navController, rootNavController) }
             composable(Screen.Orders.route) { OrdersScreen(navController, rootNavController) }
-            composable(Screen.Messages.route) { MessagesScreen(navController, rootNavController) }
-            composable(Screen.Profile.route) { ProfileScreen(navController, rootNavController) }
+
+            // Vendor Specific Screens
+            composable(Screen.VendorDashboard.route) { 
+                VendorDashboardScreen(navController = navController, rootNavController = rootNavController)
+            }
+            composable(Screen.VendorInventory.route) { 
+                VendorInventoryScreen(navController = navController) 
+            }
+            composable(Screen.AddProduct.route) { 
+                AddProductScreen(navController = navController) 
+            }
+            composable(Screen.StoreSettings.route) {
+                StoreSettingsScreen(navController = navController)
+            }
+            composable(
+                route = Screen.EditProduct.route,
+                arguments = listOf(navArgument("productId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val productId = backStackEntry.arguments?.getString("productId")
+                EditProductScreen(navController = navController, productId = productId)
+            }
         }
     }
 }

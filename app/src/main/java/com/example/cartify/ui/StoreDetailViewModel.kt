@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Product
 import com.example.cartify.data.model.Store
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class StoreDetailState {
@@ -23,7 +23,7 @@ class StoreDetailViewModel : ViewModel() {
     fun loadStoreDetail(storeId: String) {
         _storeDetailState.value = StoreDetailState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchStoreDetail(storeId)
+            val result = SupabaseRepository.fetchStoreDetail(storeId)
             result.onSuccess { (store, products) ->
                 _storeDetailState.value = StoreDetailState.Success(store, products)
             }.onFailure {

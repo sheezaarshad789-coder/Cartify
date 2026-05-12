@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.cartify.R
+import com.example.cartify.data.local.UserSession
 import com.example.cartify.navigation.Screen
 import kotlinx.coroutines.delay
 
@@ -29,15 +31,33 @@ import kotlinx.coroutines.delay
 fun SplashScreen(navController: NavController) {
     val alpha = remember { Animatable(0f) }
     val bgColor = MaterialTheme.colorScheme.background
+    val context = LocalContext.current
+    val userSession = remember { UserSession(context) }
 
     LaunchedEffect(key1 = true) {
         alpha.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 2500)
+            animationSpec = tween(durationMillis = 2000)
         )
-        delay(1000)
-        navController.navigate(Screen.Onboarding.route) {
-            popUpTo(Screen.Splash.route) { inclusive = true }
+        delay(500)
+        
+        val token = userSession.getToken()
+        val role = userSession.getRole()
+
+        if (token != null) {
+            if (role == "vendor") {
+                navController.navigate(Screen.VendorDashboard.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            } else {
+                navController.navigate(Screen.Main.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
+        } else {
+            navController.navigate(Screen.Onboarding.route) {
+                popUpTo(Screen.Splash.route) { inclusive = true }
+            }
         }
     }
 
@@ -48,15 +68,13 @@ fun SplashScreen(navController: NavController) {
             .padding(16.dp)
             .alpha(alpha.value),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top // Changed to Top to position elements towards the top
+        verticalArrangement = Arrangement.Center
     ) {
-        Spacer(modifier = Modifier.height(150.dp)) // Added initial space from top
-
         Image(
             painter = painterResource(id = R.drawable.online_groceries_cuate),
             contentDescription = "Cartify Logo",
             modifier = Modifier
-                .fillMaxWidth(0.8f)
+                .fillMaxWidth(0.7f)
                 .aspectRatio(1f)
         )
 
@@ -79,7 +97,7 @@ fun SplashScreen(navController: NavController) {
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = 18.sp
             ),
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center
         )
     }

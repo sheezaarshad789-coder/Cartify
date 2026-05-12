@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +40,8 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewMo
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var selectedRole by remember { mutableStateOf("user") } // "user" or "vendor"
+    
     val cartifyGreen = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
     val authState by viewModel.authState
@@ -46,6 +49,7 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewMo
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Success -> {
+                // Success ke baad role check karke navigate karenge (UserSession se)
                 navController.navigate(Screen.Main.route) {
                     popUpTo(Screen.Signup.route) { inclusive = true }
                 }
@@ -78,7 +82,7 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewMo
                 painter = painterResource(id = R.drawable.online_groceries_cuate),
                 contentDescription = null,
                 modifier = Modifier
-                    .fillMaxWidth(0.5f)
+                    .fillMaxWidth(0.4f)
                     .aspectRatio(1f)
             )
 
@@ -93,27 +97,44 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewMo
             )
 
             Text(
-                text = "Your Daily Groceries, One Tap Away",
+                text = "Join us as a User or Vendor",
                 style = MaterialTheme.typography.bodyMedium,
                 color = cartifyGreen,
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Sign Up Here",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = Color.Black
-            )
+            // Role Selection UI
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                RoleOption(
+                    title = "Customer",
+                    isSelected = selectedRole == "user",
+                    onClick = { selectedRole = "user" },
+                    modifier = Modifier.weight(1f),
+                    color = cartifyGreen
+                )
+                RoleOption(
+                    title = "Vendor",
+                    isSelected = selectedRole == "vendor",
+                    onClick = { selectedRole = "vendor" },
+                    modifier = Modifier.weight(1f),
+                    color = cartifyGreen
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Name Field
             TextField(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = { Text("Name", color = Color.Gray) },
+                placeholder = { Text("Full Name", color = Color.Gray) },
                 leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null, tint = cartifyGreen) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,18 +194,18 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewMo
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
                     if (name.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
-                        viewModel.signup(name.trim(), email.trim(), password)
+                        viewModel.signup(name.trim(), email.trim(), password, selectedRole)
                     } else {
                         Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier
-                    .fillMaxWidth(0.7f)
+                    .fillMaxWidth(0.8f)
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = cartifyGreen),
@@ -202,35 +223,9 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewMo
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color.LightGray))
-                Text(text = " or sign up with ", style = MaterialTheme.typography.bodySmall, color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
-                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color.LightGray))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                SocialButton(
-                    iconRes = R.drawable.google_color_icon,
-                    text = "Google",
-                    modifier = Modifier.weight(1f)
-                )
-                SocialButton(
-                    iconRes = R.drawable.facebook_round_color_icon,
-                    text = "Facebook",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row {
                 Text(text = "Already have an account? ", color = Color.Gray)
                 Text(
                     text = "Log In",
@@ -241,6 +236,34 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewMo
             }
             
             Spacer(modifier = Modifier.height(48.dp))
+        }
+    }
+}
+
+@Composable
+fun RoleOption(
+    title: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    color: Color
+) {
+    Surface(
+        modifier = modifier
+            .height(50.dp)
+            .shadow(if (isSelected) 8.dp else 2.dp, RoundedCornerShape(12.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) color else Color.White,
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = if (isSelected) Color.White else Color.Black,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            )
         }
     }
 }

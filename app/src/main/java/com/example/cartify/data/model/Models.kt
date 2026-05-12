@@ -29,7 +29,8 @@ data class Product(
     val storeId: String,
     val storeName: String,
     val categoryId: String,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val isAvailable: Boolean = true // Professional Feature: Stock Management
 )
 
 data class CartItem(
@@ -43,7 +44,9 @@ data class Order(
     val status: String,
     val date: String,
     val totalAmount: Double,
-    val items: List<CartItem>
+    val items: List<CartItem>,
+    val customerName: String = "Unknown",
+    val customerAddress: String = "No Address"
 )
 
 data class Message(
@@ -56,7 +59,7 @@ data class Message(
 
 data class Address(
     val id: String,
-    val title: String, // e.g., Home, Work
+    val title: String,
     val fullAddress: String,
     val isDefault: Boolean = false,
     val icon: ImageVector? = null

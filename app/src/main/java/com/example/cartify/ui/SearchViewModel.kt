@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Product
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class SearchState {
@@ -24,7 +24,7 @@ class SearchViewModel : ViewModel() {
         
         _searchState.value = SearchState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.searchProducts(query)
+            val result = SupabaseRepository.searchProducts(query)
             result.onSuccess {
                 _searchState.value = SearchState.Success(it)
             }.onFailure {
@@ -35,7 +35,7 @@ class SearchViewModel : ViewModel() {
     
     fun toggleFavorite(product: Product) {
         viewModelScope.launch {
-            BackendRepository.toggleFavorite(product.id)
+            SupabaseRepository.toggleFavorite(product.id, product.isFavorite)
             // Ideally, we'd update the local state here as well
         }
     }

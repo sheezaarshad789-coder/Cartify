@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Address
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class AddressState {
@@ -27,9 +27,15 @@ class AddressViewModel : ViewModel() {
     }
 
     fun loadAddresses() {
+        val userId = SupabaseRepository.getCurrentUserId()
+        if (userId == null) {
+            _addressState.value = AddressState.Error("User not logged in")
+            return
+        }
+
         _addressState.value = AddressState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchAddresses()
+            val result = SupabaseRepository.fetchAddresses(userId)
             result.onSuccess {
                 _addressState.value = AddressState.Success(it)
             }.onFailure {
@@ -39,9 +45,12 @@ class AddressViewModel : ViewModel() {
     }
 
     fun addAddress(title: String, fullAddress: String, isDefault: Boolean, onSuccess: () -> Unit) {
+        val userId = SupabaseRepository.getCurrentUserId()
+        if (userId == null) return
+
         _isSaving.value = true
         viewModelScope.launch {
-            val result = BackendRepository.addAddress(title, fullAddress, isDefault)
+            val result = SupabaseRepository.addAddress(userId, title, fullAddress, isDefault)
             _isSaving.value = false
             result.onSuccess {
                 loadAddresses() // Refresh the list

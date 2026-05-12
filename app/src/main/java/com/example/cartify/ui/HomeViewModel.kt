@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Category
 import com.example.cartify.data.model.Product
 import com.example.cartify.data.model.Store
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class HomeState {
@@ -33,9 +33,9 @@ class HomeViewModel : ViewModel() {
         _homeState.value = HomeState.Loading
         viewModelScope.launch {
             try {
-                val categoriesResult = BackendRepository.fetchCategories()
-                val storesResult = BackendRepository.fetchStores()
-                val productsResult = BackendRepository.fetchProducts()
+                val categoriesResult = SupabaseRepository.fetchCategories()
+                val storesResult = SupabaseRepository.fetchStores()
+                val productsResult = SupabaseRepository.fetchProducts()
 
                 if (categoriesResult.isSuccess && storesResult.isSuccess && productsResult.isSuccess) {
                     _homeState.value = HomeState.Success(

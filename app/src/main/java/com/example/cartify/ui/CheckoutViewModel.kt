@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.CartItem
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class CheckoutState {
@@ -19,10 +19,10 @@ class CheckoutViewModel : ViewModel() {
     private val _checkoutState = mutableStateOf<CheckoutState>(CheckoutState.Idle)
     val checkoutState: State<CheckoutState> = _checkoutState
 
-    fun placeOrder(cartItems: List<CartItem>, totalAmount: Double, onSuccess: () -> Unit) {
+    fun placeOrder(cartItems: List<CartItem>, totalAmount: Double, userId: String, onSuccess: () -> Unit) {
         _checkoutState.value = CheckoutState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.placeOrder(cartItems, totalAmount)
+            val result = SupabaseRepository.placeOrder(cartItems, totalAmount, userId)
             result.onSuccess {
                 _checkoutState.value = CheckoutState.Success
                 onSuccess()

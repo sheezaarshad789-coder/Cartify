@@ -59,12 +59,14 @@ object FakeData {
     )
 
     suspend fun syncFromBackend() = coroutineScope {
-        val categoriesDeferred = async { BackendRepository.fetchCategories() }
-        val storesDeferred = async { BackendRepository.fetchStores() }
-        val productsDeferred = async { BackendRepository.fetchProducts() }
-        val ordersDeferred = async { BackendRepository.fetchOrders() }
-        val messagesDeferred = async { BackendRepository.fetchMessages() }
-        val addressesDeferred = async { BackendRepository.fetchAddresses() }
+        val userId = SupabaseRepository.getCurrentUserId()
+        
+        val categoriesDeferred = async { SupabaseRepository.fetchCategories() }
+        val storesDeferred = async { SupabaseRepository.fetchStores() }
+        val productsDeferred = async { SupabaseRepository.fetchProducts() }
+        val ordersDeferred = if (userId != null) async { SupabaseRepository.fetchUserOrders(userId) } else null
+        val messagesDeferred = if (userId != null) async { SupabaseRepository.fetchMessages(userId) } else null
+        val addressesDeferred = if (userId != null) async { SupabaseRepository.fetchAddresses(userId) } else null
 
         categoriesDeferred.await().onSuccess {
             if (it.isNotEmpty()) {
@@ -84,17 +86,17 @@ object FakeData {
                 products.addAll(it)
             }
         }
-        ordersDeferred.await().onSuccess {
+        ordersDeferred?.await()?.onSuccess {
             orders.clear()
             orders.addAll(it)
         }
-        messagesDeferred.await().onSuccess {
+        messagesDeferred?.await()?.onSuccess {
             if (it.isNotEmpty()) {
                 messages.clear()
                 messages.addAll(it)
             }
         }
-        addressesDeferred.await().onSuccess {
+        addressesDeferred?.await()?.onSuccess {
             if (it.isNotEmpty()) {
                 addresses.clear()
                 addresses.addAll(it)

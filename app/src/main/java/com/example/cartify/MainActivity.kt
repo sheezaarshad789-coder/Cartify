@@ -18,20 +18,11 @@ import com.example.cartify.ui.screens.auth.OnboardingScreen
 import com.example.cartify.ui.screens.auth.SignupScreen
 import com.example.cartify.ui.screens.auth.SplashScreen
 import com.example.cartify.ui.screens.checkout.CheckoutScreen
-import com.example.cartify.ui.screens.details.AddAddressScreen
-import com.example.cartify.ui.screens.details.AddressManagementScreen
-import com.example.cartify.ui.screens.details.ChatDetailScreen
-import com.example.cartify.ui.screens.details.FavoritesScreen
-import com.example.cartify.ui.screens.details.HelpCenterScreen
-import com.example.cartify.ui.screens.details.NotificationsScreen
-import com.example.cartify.ui.screens.details.OrderDetailScreen
-import com.example.cartify.ui.screens.details.OrderTrackingScreen
-import com.example.cartify.ui.screens.details.ProductDetailScreen
-import com.example.cartify.ui.screens.details.SearchResultsScreen
-import com.example.cartify.ui.screens.details.StoreDetailScreen
+import com.example.cartify.ui.screens.details.*
 import com.example.cartify.ui.screens.listing.NearbyStoresScreen
 import com.example.cartify.ui.screens.listing.ProductListingScreen
 import com.example.cartify.ui.screens.main.MainScreen
+import com.example.cartify.ui.screens.vendor.StoreSettingsScreen
 import com.example.cartify.ui.theme.CartifyTheme
 import kotlinx.coroutines.launch
 
@@ -40,11 +31,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        // Backend sync ko temporarily band kar diya hai. 
-        // Jab backend Vercel par live ho jaye, tab ise uncomment kar dein.
-        // lifecycleScope.launch {
-        //    FakeData.syncFromBackend()
-        // }
+        lifecycleScope.launch {
+            FakeData.syncFromBackend()
+        }
 
         setContent {
             CartifyTheme {
@@ -66,88 +55,40 @@ fun AppNavigation() {
         composable(Screen.Onboarding.route) { OnboardingScreen(navController) }
         composable(Screen.Login.route) { LoginScreen(navController) }
         composable(Screen.Signup.route) { SignupScreen(navController) }
-        composable(Screen.Main.route) { MainScreen(navController) }
-
-        composable(
-            route = Screen.StoreDetail.route,
-            arguments = listOf(navArgument("storeId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            StoreDetailScreen(navController, backStackEntry.arguments?.getString("storeId"))
+        
+        composable(Screen.Main.route) { 
+            MainScreen(rootNavController = navController) 
         }
-
-        composable(
-            route = Screen.ProductDetail.route,
-            arguments = listOf(navArgument("productId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            ProductDetailScreen(navController, backStackEntry.arguments?.getString("productId"))
+        
+        // Common & Details Screens
+        composable(route = Screen.StoreDetail.route, arguments = listOf(navArgument("storeId") { type = NavType.StringType })) { 
+            StoreDetailScreen(navController, it.arguments?.getString("storeId")) 
         }
-
+        composable(route = Screen.ProductDetail.route, arguments = listOf(navArgument("productId") { type = NavType.StringType })) { 
+            ProductDetailScreen(navController, it.arguments?.getString("productId")) 
+        }
         composable(Screen.Checkout.route) { CheckoutScreen(navController) }
-
-        composable(
-            route = Screen.ChatDetail.route,
-            arguments = listOf(navArgument("vendorId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            ChatDetailScreen(navController, backStackEntry.arguments?.getString("vendorId"))
+        composable(route = Screen.ChatDetail.route, arguments = listOf(navArgument("vendorId") { type = NavType.StringType })) { 
+            ChatDetailScreen(navController, it.arguments?.getString("vendorId")) 
         }
-
-        composable(
-            route = Screen.OrderTracking.route,
-            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            OrderTrackingScreen(navController, backStackEntry.arguments?.getString("orderId"))
+        composable(route = Screen.OrderTracking.route, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { 
+            OrderTrackingScreen(navController, it.arguments?.getString("orderId")) 
         }
-
-        composable(
-            route = Screen.OrderDetail.route,
-            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            OrderDetailScreen(navController, backStackEntry.arguments?.getString("orderId"))
+        composable(route = Screen.OrderDetail.route, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { 
+            OrderDetailScreen(navController, it.arguments?.getString("orderId")) 
         }
-
-        composable(
-            route = Screen.SearchResults.route,
-            arguments = listOf(navArgument("query") { type = NavType.StringType })
-        ) { backStackEntry ->
-            SearchResultsScreen(navController, backStackEntry.arguments?.getString("query"))
+        composable(route = Screen.SearchResults.route, arguments = listOf(navArgument("query") { type = NavType.StringType })) { 
+            SearchResultsScreen(navController, it.arguments?.getString("query")) 
         }
-
-        composable(
-            route = Screen.ProductListing.route,
-            arguments = listOf(
-                navArgument("categoryId") { type = NavType.StringType },
-                navArgument("categoryName") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            ProductListingScreen(
-                navController = navController,
-                categoryId = backStackEntry.arguments?.getString("categoryId"),
-                categoryName = backStackEntry.arguments?.getString("categoryName")
-            )
+        composable(route = Screen.ProductListing.route, arguments = listOf(navArgument("categoryId") { type = NavType.StringType }, navArgument("categoryName") { type = NavType.StringType })) { 
+            ProductListingScreen(navController, it.arguments?.getString("categoryId"), it.arguments?.getString("categoryName")) 
         }
-
-        composable(Screen.AddressManagement.route) {
-            AddressManagementScreen(navController)
-        }
-
-        composable(Screen.NearbyStores.route) {
-            NearbyStoresScreen(navController)
-        }
-
-        composable(Screen.Favorites.route) {
-            FavoritesScreen(navController)
-        }
-
-        composable(Screen.Notifications.route) {
-            NotificationsScreen(navController)
-        }
-
-        composable(Screen.HelpCenter.route) {
-            HelpCenterScreen(navController)
-        }
-
-        composable(Screen.AddAddress.route) {
-            AddAddressScreen(navController)
-        }
+        composable(Screen.AddressManagement.route) { AddressManagementScreen(navController) }
+        composable(Screen.NearbyStores.route) { NearbyStoresScreen(navController) }
+        composable(Screen.Favorites.route) { FavoritesScreen(navController) }
+        composable(Screen.Notifications.route) { NotificationsScreen(navController) }
+        composable(Screen.HelpCenter.route) { HelpCenterScreen(navController) }
+        composable(Screen.AddAddress.route) { AddAddressScreen(navController) }
+        composable(Screen.StoreSettings.route) { StoreSettingsScreen(navController) }
     }
 }

@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Message
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class MessagesState {
@@ -24,9 +24,15 @@ class MessagesViewModel : ViewModel() {
     }
 
     fun loadMessages() {
+        val userId = SupabaseRepository.getCurrentUserId()
+        if (userId == null) {
+            _messagesState.value = MessagesState.Error("User not logged in")
+            return
+        }
+
         _messagesState.value = MessagesState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchMessages()
+            val result = SupabaseRepository.fetchMessages(userId)
             result.onSuccess {
                 _messagesState.value = MessagesState.Success(it)
             }.onFailure {

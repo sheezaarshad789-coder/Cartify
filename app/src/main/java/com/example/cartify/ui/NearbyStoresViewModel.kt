@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Store
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class NearbyStoresState {
@@ -26,7 +26,7 @@ class NearbyStoresViewModel : ViewModel() {
     fun loadStores() {
         _storesState.value = NearbyStoresState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchStores()
+            val result = SupabaseRepository.fetchStores()
             result.onSuccess {
                 _storesState.value = NearbyStoresState.Success(it)
             }.onFailure {

@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Faq
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class HelpCenterState {
@@ -26,7 +26,7 @@ class HelpCenterViewModel : ViewModel() {
     fun loadFaqs() {
         _helpCenterState.value = HelpCenterState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchFaqs()
+            val result = SupabaseRepository.fetchFaqs()
             result.onSuccess {
                 _helpCenterState.value = HelpCenterState.Success(it)
             }.onFailure {

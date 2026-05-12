@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Product
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class FavoritesState {
@@ -26,7 +26,7 @@ class FavoritesViewModel : ViewModel() {
     fun loadFavorites() {
         _favoritesState.value = FavoritesState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchFavoriteProducts()
+            val result = SupabaseRepository.fetchFavoriteProducts()
             result.onSuccess {
                 _favoritesState.value = FavoritesState.Success(it)
             }.onFailure {
@@ -37,7 +37,7 @@ class FavoritesViewModel : ViewModel() {
 
     fun toggleFavorite(product: Product) {
         viewModelScope.launch {
-            BackendRepository.toggleFavorite(product.id)
+            SupabaseRepository.toggleFavorite(product.id, product.isFavorite)
             loadFavorites() // Refresh list after toggle
         }
     }

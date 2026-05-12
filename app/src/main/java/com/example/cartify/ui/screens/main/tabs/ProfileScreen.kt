@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +38,7 @@ fun ProfileScreen(
     
     val userName by viewModel.userName
     val userEmail by viewModel.userEmail
+    val isVendorMode by viewModel.isVendorMode
 
     var showLanguageSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
@@ -88,7 +90,7 @@ fun ProfileScreen(
                             popUpTo(Screen.Home.route) { inclusive = true }
                         }
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Home")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
@@ -108,7 +110,7 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(cartifyGreen)
-                    .padding(top = 16.dp, bottom = 16.dp),
+                    .padding(top = 16.dp, bottom = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -122,19 +124,6 @@ fun ProfileScreen(
                         ) {
                             Text("👤", fontSize = 36.sp)
                         }
-                        Surface(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .align(Alignment.BottomEnd)
-                                .clickable { },
-                            shape = CircleShape,
-                            color = Color.White,
-                            shadowElevation = 2.dp
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(12.dp), tint = cartifyGreen)
-                            }
-                        }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -147,20 +136,45 @@ fun ProfileScreen(
                 }
             }
 
-            // Account Sections
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Account Settings", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 8.dp))
                 
-                ProfileOptionCard(icon = Icons.Default.LocationOn, title = "Saved Addresses", subtitle = "Home, Office & more") {
-                    rootNavController.navigate(Screen.AddressManagement.route)
-                }
-                ProfileOptionCard(icon = Icons.Default.Favorite, title = "My Wishlist", subtitle = "Your favorite grocery items") { 
-                    rootNavController.navigate(Screen.Favorites.route) 
-                }
-                ProfileOptionCard(icon = Icons.Default.History, title = "Order History", subtitle = "View all your past orders") {
-                    navController.navigate(Screen.Orders.route) {
-                        popUpTo(Screen.Home.route)
-                        launchSingleTop = true
+                // Switch Mode Logic
+                VendorSwitchCard(
+                    isVendorMode = isVendorMode,
+                    onSwitch = {
+                        viewModel.toggleVendorMode()
+                        val targetRoute = if (!isVendorMode) Screen.VendorDashboard.route else Screen.Home.route
+                        navController.navigate(targetRoute) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = if (isVendorMode) "Vendor Settings" else "Account Settings", 
+                    fontWeight = FontWeight.ExtraBold, 
+                    fontSize = 15.sp, 
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                if (isVendorMode) {
+                    ProfileOptionCard(icon = Icons.Default.Store, title = "Store Settings", subtitle = "Name, Logo & Banner") {
+                        rootNavController.navigate(Screen.StoreSettings.route)
+                    }
+                    ProfileOptionCard(icon = Icons.Default.Inventory, title = "Inventory", subtitle = "Manage products & stock") {
+                        navController.navigate(Screen.VendorInventory.route)
+                    }
+                } else {
+                    ProfileOptionCard(icon = Icons.Default.LocationOn, title = "Saved Addresses", subtitle = "Home, Office & more") {
+                        rootNavController.navigate(Screen.AddressManagement.route)
+                    }
+                    ProfileOptionCard(icon = Icons.Default.Favorite, title = "My Wishlist", subtitle = "Your favorite grocery items") { 
+                        rootNavController.navigate(Screen.Favorites.route) 
+                    }
+                    ProfileOptionCard(icon = Icons.Default.History, title = "Order History", subtitle = "View all your past orders") {
+                        navController.navigate(Screen.Orders.route)
                     }
                 }
                 
@@ -198,6 +212,67 @@ fun ProfileScreen(
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun VendorSwitchCard(isVendorMode: Boolean, onSwitch: () -> Unit) {
+    val gradientColors = if (isVendorMode) {
+        listOf(Color(0xFF1976D2), Color(0xFF2196F3))
+    } else {
+        listOf(Color(0xFF2E7D32), Color(0xFF4CAF50))
+    }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSwitch),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(Brush.horizontalGradient(colors = gradientColors))
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isVendorMode) Icons.Default.Person else Icons.Default.Storefront,
+                        contentDescription = null, 
+                        tint = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isVendorMode) "Switch to Customer Mode" else "Switch to Vendor Mode",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = if (isVendorMode) "Start shopping for groceries" else "Manage your store and products",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = Color.White
+                )
             }
         }
     }

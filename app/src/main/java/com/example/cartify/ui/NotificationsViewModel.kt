@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Notification
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class NotificationsState {
@@ -26,7 +26,7 @@ class NotificationsViewModel : ViewModel() {
     fun loadNotifications() {
         _notificationsState.value = NotificationsState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchNotifications()
+            val result = SupabaseRepository.fetchNotifications()
             result.onSuccess {
                 _notificationsState.value = NotificationsState.Success(it)
             }.onFailure {

@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,65 +24,62 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.cartify.data.model.Message
+import com.example.cartify.ui.ChatState
+import com.example.cartify.ui.ChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatDetailScreen(navController: NavController, vendorName: String?) {
+fun ChatDetailScreen(
+    navController: NavController, 
+    otherUserId: String?, 
+    viewModel: ChatViewModel = viewModel()
+) {
     var messageText by remember { mutableStateOf("") }
-    val cartifyGreen = Color(0xFF2E7D32)
+    val cartifyGreen = MaterialTheme.colorScheme.primary
     val softGray = Color(0xFFF5F5F5)
+    val state by viewModel.chatState
     
-    // Decode the vendor name since it might be URL encoded from navigation
-    val decodedVendorName = remember(vendorName) {
-        Uri.decode(vendorName ?: "Store")
+    val decodedOtherId = remember(otherUserId) {
+        Uri.decode(otherUserId ?: "")
+    }
+
+    LaunchedEffect(decodedOtherId) {
+        if (decodedOtherId.isNotEmpty()) {
+            viewModel.loadMessages(decodedOtherId)
+        }
     }
 
     Scaffold(
         topBar = {
             Surface(shadowElevation = 4.dp) {
                 TopAppBar(
-                    modifier = Modifier.height(84.dp), // Increased height for professional look
+                    modifier = Modifier.height(84.dp),
                     title = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxHeight()
                         ) {
-                            // Enlarge Store Image Placeholder
                             Box(
                                 modifier = Modifier
-                                    .size(52.dp) // Bigger store image
+                                    .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFEEEEEE)),
+                                    .background(cartifyGreen.copy(alpha = 0.1f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("🏪", fontSize = 28.sp)
+                                Text(decodedOtherId.take(1).uppercase(), color = cartifyGreen, fontWeight = FontWeight.Bold)
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(verticalArrangement = Arrangement.Center) {
                                 Text(
-                                    decodedVendorName,
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontWeight = FontWeight.Black,
-                                        letterSpacing = (-0.5).sp
-                                    )
+                                    decodedOtherId,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(cartifyGreen)
-                                    )
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        "Rider at Store",
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            color = cartifyGreen,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    )
+                                    Text("Online", style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF4CAF50)))
                                 }
                             }
                         }
@@ -91,7 +87,7 @@ fun ChatDetailScreen(navController: NavController, vendorName: String?) {
                     navigationIcon = {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight()) {
                             IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.Black)
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                             }
                         }
                     },
@@ -100,19 +96,13 @@ fun ChatDetailScreen(navController: NavController, vendorName: String?) {
             }
         },
         bottomBar = {
-            Column(modifier = Modifier
-                .background(Color.White)
-                .navigationBarsPadding()
-            ) {
-                // Smart Quick Replies
+            Column(modifier = Modifier.background(Color.White).navigationBarsPadding()) {
                 LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val quickReplies = listOf("Leave at door", "Check expiry date", "Is it fresh?", "Call me")
+                    val quickReplies = listOf("Is it available?", "When will it be delivered?", "Thanks!", "OK")
                     items(quickReplies) { reply ->
                         Surface(
                             modifier = Modifier.clickable { messageText = reply },
@@ -120,173 +110,80 @@ fun ChatDetailScreen(navController: NavController, vendorName: String?) {
                             color = Color.White,
                             border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
                         ) {
-                            Text(
-                                text = reply,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            Text(text = reply, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), fontSize = 13.sp)
                         }
                     }
                 }
 
-                // Multimedia Input Bar
-                Surface(
-                    shadowElevation = 8.dp,
-                    color = Color.White
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { /* Attachment */ }) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = Color.Gray)
-                        }
-                        TextField(
-                            value = messageText,
-                            onValueChange = { messageText = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Message...", color = Color.Gray) },
-                            shape = RoundedCornerShape(24.dp),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = softGray,
-                                unfocusedContainerColor = softGray,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            trailingIcon = {
-                                Row {
-                                    IconButton(onClick = { /* Location */ }) {
-                                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.Gray)
-                                    }
-                                    IconButton(onClick = { /* Voice */ }) {
-                                        Icon(Icons.Default.Mic, contentDescription = null, tint = Color.Gray)
-                                    }
-                                }
-                            }
+                    TextField(
+                        value = messageText,
+                        onValueChange = { messageText = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Type a message...", color = Color.Gray) },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = softGray,
+                            unfocusedContainerColor = softGray,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
                         )
-                        if (messageText.isNotBlank()) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { messageText = "" },
-                                colors = IconButtonDefaults.iconButtonColors(containerColor = cartifyGreen)
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White)
-                            }
+                    )
+                    if (messageText.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { 
+                                viewModel.sendMessage(decodedOtherId, decodedOtherId, messageText)
+                                messageText = ""
+                            },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = cartifyGreen)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White)
                         }
                     }
                 }
             }
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(Color(0xFFF9F9F9))
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("Today", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding).background(Color(0xFFF9F9F9))) {
+            when (state) {
+                is ChatState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = cartifyGreen)
+                is ChatState.Error -> Text((state as ChatState.Error).message, modifier = Modifier.align(Alignment.Center), color = Color.Red)
+                is ChatState.Success -> {
+                    val messages = (state as ChatState.Success).messages
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        reverseLayout = false
+                    ) {
+                        items(messages) { message ->
+                            ChatBubbleModern(
+                                text = message.lastMessage,
+                                time = message.time,
+                                isMe = message.isMe
+                            )
+                        }
+                    }
                 }
-            }
-
-            // Interactive Replacement Card
-            item {
-                ReplacementCard()
-            }
-
-            item {
-                ChatBubbleModern(
-                    text = "The rider is heading to your location.",
-                    time = "12:30 PM",
-                    isMe = false,
-                    isRead = true
-                )
-            }
-            
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 8.dp)) {
-                    Text("Rider is typing", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    // Simple dots animation placeholder
-                    Text("...", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
+                else -> {}
             }
         }
     }
 }
 
 @Composable
-fun ReplacementCard() {
-    val forestGreen = Color(0xFF2E7D32)
-    Card(
-        modifier = Modifier.fillMaxWidth(0.85f),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF44336), modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Product Out of Stock", fontWeight = FontWeight.Bold, color = Color(0xFFF44336))
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("Suggested replacement for 'Red Apples':", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Box(modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF0F0F0)), contentAlignment = Alignment.Center) {
-                        Text("Original", fontSize = 10.sp, color = Color.Gray)
-                    }
-                    Text("Red Apple", style = MaterialTheme.typography.labelSmall)
-                }
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.padding(top = 32.dp).size(16.dp), tint = Color.Gray)
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Box(modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF0F0F0)), contentAlignment = Alignment.Center) {
-                        Text("Suggested", fontSize = 10.sp, color = Color.Gray)
-                    }
-                    Text("Green Apple", style = MaterialTheme.typography.labelSmall)
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
-                    onClick = { },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Gray)
-                ) {
-                    Text("Reject")
-                }
-                Button(
-                    onClick = { },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = forestGreen)
-                ) {
-                    Text("Approve")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ChatBubbleModern(text: String, time: String, isMe: Boolean, isRead: Boolean) {
-    val forestGreen = Color(0xFF2E7D32)
+fun ChatBubbleModern(text: String, time: String, isMe: Boolean) {
+    val cartifyGreen = MaterialTheme.colorScheme.primary
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
     ) {
         Surface(
-            color = if (isMe) forestGreen else Color.White,
+            color = if (isMe) cartifyGreen else Color.White,
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
@@ -299,23 +196,9 @@ fun ChatBubbleModern(text: String, time: String, isMe: Boolean, isRead: Boolean)
                 text = text,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 color = if (isMe) Color.White else Color.Black,
-                style = MaterialTheme.typography.bodyMedium
+                fontSize = 15.sp
             )
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = 4.dp)
-        ) {
-            Text(text = time, fontSize = 11.sp, color = Color.Gray)
-            if (isMe) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Default.DoneAll,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = if (isRead) Color(0xFF2196F3) else Color.Gray
-                )
-            }
-        }
+        Text(text = time, fontSize = 10.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
     }
 }

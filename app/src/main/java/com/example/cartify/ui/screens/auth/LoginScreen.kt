@@ -37,13 +37,14 @@ import com.example.cartify.ui.AuthViewModel
 fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val cartifyGreen = MaterialTheme.colorScheme.primary
+    val cartifyGreen = Color(0xFF2E7D32)
     val context = LocalContext.current
     val authState by viewModel.authState
 
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Success -> {
+                // Hamesha Main par jayenge, MainScreen khud decide karegi Vendor ya Customer
                 navController.navigate(Screen.Main.route) {
                     popUpTo(Screen.Login.route) { inclusive = true }
                 }
@@ -91,7 +92,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
             )
 
             Text(
-                text = "Your Daily Groceries, One Tap Away",
+                text = "Customer & Vendor Platform",
                 style = MaterialTheme.typography.bodyMedium,
                 color = cartifyGreen,
                 fontWeight = FontWeight.SemiBold
@@ -148,15 +149,6 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Text(
-                text = "Forgot Password?",
-                modifier = Modifier.align(Alignment.End).clickable { },
-                color = cartifyGreen,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
-            )
-
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
@@ -186,33 +178,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color.LightGray))
-                Text(text = " or continue with ", style = MaterialTheme.typography.bodySmall, color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
-                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color.LightGray))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                SocialButton(
-                    iconRes = R.drawable.google_color_icon,
-                    text = "Google",
-                    modifier = Modifier.weight(1f)
-                )
-                SocialButton(
-                    iconRes = R.drawable.facebook_round_color_icon,
-                    text = "Facebook",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Row {
                 Text(text = "Don't have an account? ", color = Color.Gray)
@@ -225,36 +191,6 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
             }
             
             Spacer(modifier = Modifier.height(48.dp))
-        }
-    }
-}
-
-@Composable
-fun SocialButton(iconRes: Int, text: String, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.height(52.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
         }
     }
 }

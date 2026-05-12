@@ -22,10 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.cartify.data.repository.FakeData
+import com.example.cartify.data.remote.SupabaseManager
 import com.example.cartify.ui.CartViewModel
 import com.example.cartify.ui.CheckoutState
 import com.example.cartify.ui.CheckoutViewModel
+import io.github.jan.supabase.auth.auth
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +42,8 @@ fun CheckoutScreen(
     val cartifyGreen = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
     val checkoutState by checkoutViewModel.checkoutState
+    
+    val userId = remember { SupabaseManager.client.auth.currentUserOrNull()?.id ?: "" }
 
     Scaffold(
         topBar = {
@@ -72,12 +75,16 @@ fun CheckoutScreen(
             ) {
                 Button(
                     onClick = { 
-                        checkoutViewModel.placeOrder(cartItems, total + 50.0) {
-                            cartViewModel.clearCart()
-                            Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_LONG).show()
-                            navController.navigate("main") {
-                                popUpTo("main") { inclusive = true }
+                        if (userId.isNotEmpty()) {
+                            checkoutViewModel.placeOrder(cartItems, total + 50.0, userId) {
+                                cartViewModel.clearCart()
+                                Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_LONG).show()
+                                navController.navigate("main") {
+                                    popUpTo("main") { inclusive = true }
+                                }
                             }
+                        } else {
+                            Toast.makeText(context, "Please login to place order", Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier
@@ -204,8 +211,7 @@ fun PaymentOptionRow(title: String, isSelected: Boolean, onSelect: () -> Unit, c
             )
             .clickable(onClick = onSelect)
             .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+        verticalAlignment = Alignment.CenterVertically) {
         RadioButton(
             selected = isSelected, 
             onClick = onSelect,

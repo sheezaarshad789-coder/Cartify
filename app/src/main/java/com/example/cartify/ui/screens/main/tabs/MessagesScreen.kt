@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,61 +53,63 @@ fun MessagesScreen(
                             popUpTo(Screen.Home.route) { inclusive = true }
                         }
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Home")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
                 windowInsets = WindowInsets(0, 0, 0, 0)
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.White
     ) { innerPadding ->
-        when (messagesState) {
-            is MessagesState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = cartifyGreen)
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            when (messagesState) {
+                is MessagesState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = cartifyGreen)
                 }
-            }
-            is MessagesState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                is MessagesState.Error -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(text = (messagesState as MessagesState.Error).message, color = Color.Red)
-                        Button(onClick = { viewModel.loadMessages() }, modifier = Modifier.padding(top = 8.dp)) {
-                            Text("Retry")
+                        Button(onClick = { viewModel.loadMessages() }) { Text("Retry") }
+                    }
+                }
+                is MessagesState.Success -> {
+                    val messages = (messagesState as MessagesState.Success).messages
+                    if (messages.isEmpty()) {
+                        Text("No messages yet", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(messages) { message ->
+                                MessageItemCard(message, cartifyGreen) {
+                                    // In a real app, we'd navigate to ChatDetail with the other user's ID
+                                    // For now, we use senderName as a placeholder for the chat ID
+                                    rootNavController.navigate(Screen.ChatDetail.createRoute(message.senderName))
+                                }
+                            }
                         }
                     }
                 }
+                else -> {}
             }
-            is MessagesState.Success -> {
-                val messages = (messagesState as MessagesState.Success).messages
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    itemsIndexed(messages) { index, message ->
-                        MessageItemCard(message, cartifyGreen) {
-                            val encodedVendorName = Uri.encode(message.senderName)
-                            rootNavController.navigate(Screen.ChatDetail.createRoute(encodedVendorName))
-                        }
-                    }
-                }
-            }
-            else -> {}
         }
     }
 }
 
 @Composable
 fun MessageItemCard(message: Message, cartifyGreen: Color, onClick: () -> Unit) {
-    val softGray = Color(0xFFF0F0F0)
-    
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        color = softGray
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFF9F9F9)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -115,76 +117,36 @@ fun MessageItemCard(message: Message, cartifyGreen: Color, onClick: () -> Unit) 
         ) {
             Box(
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(50.dp)
                     .clip(CircleShape)
-                    .background(if (message.id == "1") cartifyGreen else Color.LightGray),
+                    .background(cartifyGreen.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = message.senderName.take(1).uppercase(),
-                    color = Color.White,
+                    color = cartifyGreen,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+                    fontSize = 18.sp
                 )
             }
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = message.senderName, 
-                        fontWeight = FontWeight.Bold, 
-                        fontSize = 17.sp,
-                        color = Color.Black
-                    )
-                    Text(
-                        text = message.time, 
-                        color = if (message.id == "1") cartifyGreen else Color.Gray, 
-                        fontSize = 11.sp,
-                        fontWeight = if (message.id == "1") FontWeight.Bold else FontWeight.Normal
-                    )
+                    Text(text = message.senderName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(text = message.time, color = Color.Gray, fontSize = 11.sp)
                 }
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = message.lastMessage,
-                        color = Color.Gray,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    if (message.id == "1") {
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(cartifyGreen),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "1",
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = message.lastMessage,
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

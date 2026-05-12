@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.Order
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class OrdersState {
@@ -24,9 +24,15 @@ class OrdersViewModel : ViewModel() {
     }
 
     fun loadOrders() {
+        val userId = SupabaseRepository.getCurrentUserId()
+        if (userId == null) {
+            _ordersState.value = OrdersState.Error("User not logged in")
+            return
+        }
+
         _ordersState.value = OrdersState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchOrders()
+            val result = SupabaseRepository.fetchUserOrders(userId)
             result.onSuccess {
                 _ordersState.value = OrdersState.Success(it)
             }.onFailure {

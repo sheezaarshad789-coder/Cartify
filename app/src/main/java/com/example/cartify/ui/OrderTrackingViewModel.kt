@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.data.model.OrderTracking
-import com.example.cartify.data.repository.BackendRepository
+import com.example.cartify.data.repository.SupabaseRepository
 import kotlinx.coroutines.launch
 
 sealed class OrderTrackingState {
@@ -22,7 +22,7 @@ class OrderTrackingViewModel : ViewModel() {
     fun loadOrderTracking(orderId: String) {
         _trackingState.value = OrderTrackingState.Loading
         viewModelScope.launch {
-            val result = BackendRepository.fetchOrderTracking(orderId)
+            val result = SupabaseRepository.fetchOrderTracking(orderId)
             result.onSuccess {
                 _trackingState.value = OrderTrackingState.Success(it)
             }.onFailure {
