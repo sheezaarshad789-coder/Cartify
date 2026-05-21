@@ -44,6 +44,12 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":core:common"))
+    implementation(project(":data:network"))
+    implementation(project(":feature:auth"))
+    implementation(project(":feature:customer"))
+    implementation(project(":feature:vendor"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -56,6 +62,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     
@@ -66,10 +73,10 @@ dependencies {
     implementation(libs.supabase.realtime)
     implementation(libs.supabase.storage)
     implementation(libs.kotlinx.serialization.json)
-    implementation("io.ktor:ktor-client-android:3.0.1")
+    implementation(libs.ktor.client.android)
     
     // Coil for Image Loading
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

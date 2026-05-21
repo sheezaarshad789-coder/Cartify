@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Cartify" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#2E7D32</item>
-        <item name="android:statusBarColor">#FFFFFF</item>
+    <!-- Base application theme -->
+    <style name="Theme.Cartify" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:statusBarColor">@android:color/white</item>
         <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/online_groceries_cuate</item>
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="postSplashScreenTheme">@style/Theme.Cartify</item>
     </style>
 </resources>

@@ -4,30 +4,33 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.cartify.data.repository.FakeData
-import com.example.cartify.navigation.Screen
-import com.example.cartify.ui.screens.auth.LoginScreen
-import com.example.cartify.ui.screens.auth.OnboardingScreen
-import com.example.cartify.ui.screens.auth.SignupScreen
-import com.example.cartify.ui.screens.auth.SplashScreen
-import com.example.cartify.ui.screens.checkout.CheckoutScreen
-import com.example.cartify.ui.screens.details.*
-import com.example.cartify.ui.screens.listing.NearbyStoresScreen
-import com.example.cartify.ui.screens.listing.ProductListingScreen
-import com.example.cartify.ui.screens.main.MainScreen
-import com.example.cartify.ui.screens.vendor.StoreSettingsScreen
-import com.example.cartify.ui.theme.CartifyTheme
+import com.example.cartify.core.common.navigation.Screen
+import com.example.cartify.core.common.theme.CartifyTheme
+import com.example.cartify.data.network.repository.FakeData
+import com.example.cartify.feature.auth.screens.*
+import com.example.cartify.feature.customer.screens.*
+import com.example.cartify.feature.customer.screens.checkout.CheckoutScreen
+import com.example.cartify.feature.customer.screens.details.*
+import com.example.cartify.feature.customer.screens.listing.NearbyStoresScreen
+import com.example.cartify.feature.customer.screens.listing.ProductListingScreen
+import com.example.cartify.feature.vendor.screens.*
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
@@ -37,7 +40,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CartifyTheme {
-                AppNavigation()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.White
+                ) {
+                    AppNavigation()
+                }
             }
         }
     }
@@ -60,8 +68,21 @@ fun AppNavigation() {
             MainScreen(rootNavController = navController) 
         }
         
-        // Common & Details Screens
-        composable(route = Screen.StoreDetail.route, arguments = listOf(navArgument("storeId") { type = NavType.StringType })) { 
+        composable(Screen.VendorDashboard.route) { 
+            VendorDashboardScreen(navController = navController, rootNavController = navController) 
+        }
+        composable(Screen.AddProduct.route) { AddProductScreen(navController) }
+        composable(Screen.VendorInventory.route) { VendorInventoryScreen(navController) }
+        composable(Screen.StoreSettings.route) { StoreSettingsScreen(navController) }
+        composable(
+            route = Screen.EditProduct.route,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { 
+            EditProductScreen(navController, it.arguments?.getString("productId")) 
+        }
+        
+        // Details Screens
+        composable(route = Screen.StoreDetail.route, arguments = listOf(navArgument("storeId") { type = NavType.StringType })) {
             StoreDetailScreen(navController, it.arguments?.getString("storeId")) 
         }
         composable(route = Screen.ProductDetail.route, arguments = listOf(navArgument("productId") { type = NavType.StringType })) { 
@@ -89,6 +110,5 @@ fun AppNavigation() {
         composable(Screen.Notifications.route) { NotificationsScreen(navController) }
         composable(Screen.HelpCenter.route) { HelpCenterScreen(navController) }
         composable(Screen.AddAddress.route) { AddAddressScreen(navController) }
-        composable(Screen.StoreSettings.route) { StoreSettingsScreen(navController) }
     }
 }

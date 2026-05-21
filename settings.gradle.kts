@@ -18,3 +18,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Cartify"
 include(":app")
+include(":vendor")
+include(":core:common")
+include(":data:network")
+include(":feature:customer")
+include(":feature:vendor")
+include(":feature:auth")
