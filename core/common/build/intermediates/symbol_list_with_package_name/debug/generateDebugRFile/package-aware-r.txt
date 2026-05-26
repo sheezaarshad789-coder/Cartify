@@ -1,0 +1,8 @@
+com.example.cartify.core.common
+drawable banner1
+drawable banner2
+drawable banner3
+drawable facebook_round_color_icon
+drawable google_color_icon
+drawable online_groceries_cuate
+drawable take_away_pana

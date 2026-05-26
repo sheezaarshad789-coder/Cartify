@@ -1,0 +1,7 @@
+int drawable banner1 0x0
+int drawable banner2 0x0
+int drawable banner3 0x0
+int drawable facebook_round_color_icon 0x0
+int drawable google_color_icon 0x0
+int drawable online_groceries_cuate 0x0
+int drawable take_away_pana 0x0
