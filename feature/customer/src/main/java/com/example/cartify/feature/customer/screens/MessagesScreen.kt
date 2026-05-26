@@ -14,102 +14,82 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.example.cartify.core.common.model.Message
-import com.example.cartify.core.common.navigation.Screen
 import com.example.cartify.core.common.theme.*
-import com.example.cartify.feature.customer.MessagesState
-import com.example.cartify.feature.customer.MessagesViewModel
 
+/**
+ * Messages Content - Decoupled UI layer for the message list.
+ * Purely visual focus with Japandi aesthetics.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MessagesScreen(
-    navController: NavController,
-    rootNavController: NavController,
-    viewModel: MessagesViewModel = viewModel()
+fun MessagesContent(
+    messages: List<Message>,
+    isLoading: Boolean = false,
+    onBackClick: () -> Unit,
+    onMessageClick: (Message) -> Unit
 ) {
-    val messagesState by viewModel.messagesState
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "Messages",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold, color = JapandiCharcoal),
-                        modifier = Modifier.padding(start = 8.dp)
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
-                    }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
         containerColor = JapandiCanvas
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (val state = messagesState) {
-                is MessagesState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = JapandiSage)
-                }
-                is MessagesState.Error -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = state.message, color = JapandiError)
-                        Button(onClick = { viewModel.loadMessages() }, colors = ButtonDefaults.buttonColors(containerColor = JapandiSage)) { 
-                            Text("Retry") 
-                        }
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = JapandiSage
+                )
+            } else if (messages.isEmpty()) {
+                EmptyMessagesView()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(messages) { message ->
+                        MessageItemCard(message) { onMessageClick(message) }
                     }
                 }
-                is MessagesState.Success -> {
-                    val messages = state.messages
-                    if (messages.isEmpty()) {
-                        Text("No messages yet", modifier = Modifier.align(Alignment.Center), color = JapandiEarthyGray)
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(messages) { message ->
-                                MessageItemCard(message) {
-                                    rootNavController.navigate(Screen.ChatDetail.createRoute(message.id))
-                                }
-                            }
-                        }
-                    }
-                }
-                else -> {}
             }
         }
     }
 }
 
 @Composable
-fun MessageItemCard(message: Message, onClick: () -> Unit) {
+private fun MessageItemCard(message: Message, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        shadowElevation = 1.dp
+            .clickable(onClick = onClick)
+            .shadow(1.dp, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -117,16 +97,17 @@ fun MessageItemCard(message: Message, onClick: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(50.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
-                    .background(JapandiSage.copy(alpha = 0.1f)),
+                    .background(JapandiSage.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = message.senderName.take(1).uppercase(),
-                    color = JapandiSage,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = JapandiSage,
+                        fontWeight = FontWeight.Black
+                    )
                 )
             }
 
@@ -135,19 +116,75 @@ fun MessageItemCard(message: Message, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = message.senderName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = JapandiCharcoal)
-                    Text(text = message.time, color = JapandiEarthyGray, fontSize = 11.sp)
+                    Text(
+                        text = message.senderName,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = JapandiCharcoal
+                    )
+                    Text(
+                        text = message.time,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = JapandiEarthyGray
+                    )
                 }
                 Text(
                     text = message.lastMessage,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = JapandiEarthyGray,
-                    fontSize = 14.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
         }
     }
+}
+
+@Composable
+private fun EmptyMessagesView() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(JapandiDivider.copy(alpha = 0.2f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("💬", fontSize = 48.sp)
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "No messages yet",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = JapandiCharcoal
+        )
+        Text(
+            text = "Your conversations with stores will appear here.",
+            style = MaterialTheme.typography.bodySmall,
+            color = JapandiEarthyGray,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Messages List")
+@Composable
+fun PreviewMessagesContent() {
+    val mockMessages = listOf(
+        Message("1", "Green Grocers", "Your order has been picked up!", "10:30 AM"),
+        Message("2", "Organic Mart", "Do you have fresh strawberries today?", "Yesterday"),
+        Message("3", "Dairy Fresh", "Thank you for your purchase!", "Oct 20")
+    )
+    MessagesContent(
+        messages = mockMessages,
+        onBackClick = {},
+        onMessageClick = {}
+    )
 }

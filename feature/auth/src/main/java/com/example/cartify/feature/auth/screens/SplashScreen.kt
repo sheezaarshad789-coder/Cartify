@@ -1,103 +1,163 @@
 package com.example.cartify.feature.auth.screens
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import com.example.cartify.core.common.util.UserSession
-import com.example.cartify.core.common.navigation.Screen
+import com.example.cartify.core.common.R
+import com.example.cartify.core.common.theme.*
 import kotlinx.coroutines.delay
 
+/**
+ * Highly Polished Splash Screen.
+ * Implements fluid entry animations and Japandi aesthetic.
+ */
 @Composable
-fun SplashScreen(navController: NavController) {
-    val alpha = remember { Animatable(0f) }
-    val bgColor = MaterialTheme.colorScheme.background
-    val context = LocalContext.current
-    val userSession = remember { UserSession(context) }
+fun SplashScreen(
+    onAnimationFinished: () -> Unit
+) {
+    var startAnimation by remember { mutableStateOf(false) }
+    
+    val alphaAnim = animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+        label = "alpha"
+    )
 
-    LaunchedEffect(key1 = true) {
-        alpha.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 2000)
-        )
-        delay(500)
+    val scaleAnim = animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0.8f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessVeryLow
+        ),
+        label = "scale"
+    )
 
-        val token = userSession.getToken()
-        val role = userSession.getRole()
-
-        if (token != null) {
-            if (role == "vendor") {
-                navController.navigate(Screen.VendorDashboard.route) {
-                    popUpTo(Screen.Splash.route) { inclusive = true }
-                }
-            } else {
-                navController.navigate(Screen.Main.route) {
-                    popUpTo(Screen.Splash.route) { inclusive = true }
-                }
-            }
-        } else {
-            navController.navigate(Screen.Onboarding.route) {
-                popUpTo(Screen.Splash.route) { inclusive = true }
-            }
-        }
+    LaunchedEffect(Unit) {
+        startAnimation = true
+        delay(2500)
+        onAnimationFinished()
     }
 
-    Column(
+    CartifyTheme {
+        SplashContent(
+            alpha = alphaAnim.value,
+            scale = scaleAnim.value
+        )
+    }
+}
+
+@Composable
+fun SplashContent(
+    alpha: Float,
+    scale: Float
+) {
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
-            .padding(16.dp)
-            .alpha(alpha.value),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(JapandiCanvas),
+        contentAlignment = Alignment.Center
     ) {
-        Image(
-            painter = painterResource(id = com.example.cartify.core.common.R.drawable.online_groceries_cuate),
-            contentDescription = "Cartify Logo",
+        // Subtle background texture or element
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .aspectRatio(1f)
+                .size(400.dp)
+                .alpha(0.03f)
+                .background(JapandiCharcoal, CircleShape)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .alpha(alpha)
+                .scale(scale)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.online_groceries_cuate),
+                    contentDescription = "Cartify Logo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Cartify",
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontWeight = FontWeight.Black,
+                    fontStyle = FontStyle.Italic,
+                    letterSpacing = (-2).sp
+                ),
+                color = JapandiCharcoal
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(2.dp)
+                    .background(JapandiSage)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "ELEVATING YOUR DAILY ESSENTIALS",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    letterSpacing = 3.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = JapandiSage,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        // Bottom tagline
         Text(
-            text = "Cartify",
-            style = MaterialTheme.typography.displayMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontStyle = FontStyle.Italic,
-                fontSize = 48.sp
+            text = "DESIGNED FOR SERENITY",
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp)
+                .alpha(alpha * 0.5f),
+            style = MaterialTheme.typography.labelSmall.copy(
+                letterSpacing = 1.sp
             ),
-            color = Color.Black
+            color = JapandiEarthyGray
         )
+    }
+}
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Your Daily Groceries, One Tap Away.",
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 18.sp
-            ),
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center
-        )
+@Preview(showBackground = true)
+@Composable
+fun PreviewSplashContent() {
+    CartifyTheme {
+        SplashContent(alpha = 1f, scale = 1f)
     }
 }

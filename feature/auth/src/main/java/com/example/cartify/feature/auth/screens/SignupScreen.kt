@@ -1,15 +1,18 @@
 package com.example.cartify.feature.auth.screens
 
-import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
@@ -17,251 +20,399 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.cartify.feature.auth.R
-import com.example.cartify.core.common.navigation.Screen
-import com.example.cartify.feature.auth.AuthState
-import com.example.cartify.feature.auth.AuthViewModel
+import com.example.cartify.core.common.R
+import com.example.cartify.core.common.theme.*
+import kotlinx.coroutines.delay
 
+/**
+ * Interactive Signup Screen.
+ * Implements real-time validation, Japandi design, and fluid transitions.
+ */
 @Composable
-fun SignupScreen(navController: NavController, viewModel: AuthViewModel = viewModel()) {
+fun SignupScreen(
+    onSignupSuccess: () -> Unit,
+    onLoginClick: () -> Unit
+) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf("user") } // "user" or "vendor"
+    var isLoading by remember { mutableStateOf(false) }
+    
+    // Validation States
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
 
-    val cartifyGreen = MaterialTheme.colorScheme.primary
-    val context = LocalContext.current
-    val authState by viewModel.authState
+    SignupContent(
+        nameState = name,
+        emailState = email,
+        passwordState = password,
+        selectedRole = selectedRole,
+        isLoading = isLoading,
+        nameError = nameError,
+        emailError = emailError,
+        passwordError = passwordError,
+        onNameChange = { 
+            name = it
+            if (nameError != null) nameError = if (it.isNotBlank()) null else "Name is required"
+        },
+        onEmailChange = { 
+            email = it
+            if (emailError != null) emailError = if (it.contains("@")) null else "Enter a valid email"
+        },
+        onPasswordChange = { 
+            password = it
+            if (passwordError != null) passwordError = if (it.length >= 6) null else "Min 6 characters"
+        },
+        onRoleSelect = { selectedRole = it },
+        onSignupClick = {
+            // Local Validation
+            var hasError = false
+            if (name.isBlank()) { nameError = "Full name is required"; hasError = true }
+            if (!email.contains("@")) { emailError = "Invalid email address"; hasError = true }
+            if (password.length < 6) { passwordError = "Password too short"; hasError = true }
 
-    LaunchedEffect(authState) {
-        when (authState) {
-            is AuthState.Success -> {
-                navController.navigate(Screen.Main.route) {
-                    popUpTo(Screen.Signup.route) { inclusive = true }
-                }
-                viewModel.resetState()
+            if (!hasError) {
+                isLoading = true
+                // Simulation
             }
-            is AuthState.Error -> {
-                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_SHORT).show()
-                viewModel.resetState()
-            }
-            else -> {}
-        }
-    }
+        },
+        onLoginClick = onLoginClick
+    )
+}
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SignupContent(
+    nameState: String,
+    emailState: String,
+    passwordState: String,
+    selectedRole: String,
+    isLoading: Boolean = false,
+    nameError: String? = null,
+    emailError: String? = null,
+    passwordError: String? = null,
+    onNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onRoleSelect: (String) -> Unit,
+    onSignupClick: () -> Unit,
+    onLoginClick: () -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+
+    Scaffold(
+        containerColor = JapandiCanvas
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp)
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(140.dp)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(Color.White.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.online_groceries_cuate),
+                    contentDescription = null,
+                    modifier = Modifier.size(120.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
-            Image(
-                painter = painterResource(id = com.example.cartify.core.common.R.drawable.online_groceries_cuate),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth(0.4f)
-                    .aspectRatio(1f)
-            )
-
             Text(
-                text = "Cartify",
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontStyle = FontStyle.Italic,
+                text = "Create Account",
+                style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp
                 ),
-                color = Color.Black
+                color = JapandiCharcoal
             )
 
             Text(
-                text = "Join us as a User or Vendor",
-                style = MaterialTheme.typography.bodyMedium,
-                color = cartifyGreen,
-                fontWeight = FontWeight.SemiBold
+                text = "Join the Cartify family",
+                style = MaterialTheme.typography.bodyLarge,
+                color = JapandiEarthyGray
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Role Selection UI
+            // Role Selection with Animation
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 32.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 RoleOption(
                     title = "Customer",
                     isSelected = selectedRole == "user",
-                    onClick = { selectedRole = "user" },
-                    modifier = Modifier.weight(1f),
-                    color = cartifyGreen
+                    onClick = { onRoleSelect("user") },
+                    modifier = Modifier.weight(1f)
                 )
                 RoleOption(
                     title = "Vendor",
                     isSelected = selectedRole == "vendor",
-                    onClick = { selectedRole = "vendor" },
-                    modifier = Modifier.weight(1f),
-                    color = cartifyGreen
+                    onClick = { onRoleSelect("vendor") },
+                    modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Name Field
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                placeholder = { Text("Full Name", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null, tint = cartifyGreen) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(4.dp, RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Email Field
-            TextField(
-                value = email,
-                onValueChange = { email = it },
-                placeholder = { Text("E-mail", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null, tint = cartifyGreen) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(4.dp, RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Password Field
-            TextField(
-                value = password,
-                onValueChange = { password = it },
-                placeholder = { Text("Password", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null, tint = cartifyGreen) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(4.dp, RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    if (name.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
-                        viewModel.signup(name.trim(), email.trim(), password, selectedRole)
-                    } else {
-                        Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = cartifyGreen),
-                enabled = authState !is AuthState.Loading
+            // Form Fields
+            Column(
+                modifier = Modifier.padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (authState is AuthState.Loading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                AuthTextField(
+                    value = nameState,
+                    onValueChange = onNameChange,
+                    placeholder = "Full Name",
+                    leadingIcon = Icons.Outlined.Person,
+                    error = nameError,
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                )
+
+                AuthTextField(
+                    value = emailState,
+                    onValueChange = onEmailChange,
+                    placeholder = "Email Address",
+                    leadingIcon = Icons.Outlined.Email,
+                    keyboardType = KeyboardType.Email,
+                    error = emailError,
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                )
+
+                AuthTextField(
+                    value = passwordState,
+                    onValueChange = onPasswordChange,
+                    placeholder = "Create Password",
+                    leadingIcon = Icons.Outlined.Lock,
+                    keyboardType = KeyboardType.Password,
+                    isPassword = true,
+                    error = passwordError,
+                    imeAction = ImeAction.Done,
+                    keyboardActions = KeyboardActions(onDone = { 
+                        focusManager.clearFocus()
+                        onSignupClick()
+                    })
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Action Button
+            Button(
+                onClick = onSignupClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+                    .height(58.dp)
+                    .animateContentSize(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = JapandiSage),
+                enabled = !isLoading,
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Text(
-                        text = "CREATE ACCOUNT",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White
+                        text = "GET STARTED",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp
+                        )
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Already have an account? ", color = Color.Gray)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(bottom = 40.dp)
+            ) {
+                Text(
+                    text = "Already have an account? ",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = JapandiEarthyGray
+                )
                 Text(
                     text = "Log In",
-                    color = cartifyGreen,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { navController.popBackStack() }
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = JapandiSage
+                    ),
+                    modifier = Modifier.clickable { onLoginClick() }
                 )
             }
-
-            Spacer(modifier = Modifier.height(48.dp))
         }
     }
 }
 
 @Composable
-fun RoleOption(
+private fun RoleOption(
     title: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    color: Color
+    modifier: Modifier = Modifier
 ) {
+    val backgroundColor by animateColorAsState(if (isSelected) JapandiSage else Color.White, label = "bg")
+    val contentColor by animateColorAsState(if (isSelected) Color.White else JapandiCharcoal, label = "content")
+    val borderColor by animateColorAsState(if (isSelected) JapandiSage else JapandiDivider, label = "border")
+
     Surface(
         modifier = modifier
-            .height(50.dp)
-            .shadow(if (isSelected) 8.dp else 2.dp, RoundedCornerShape(12.dp))
+            .height(54.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) color else Color.White,
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+        shape = RoundedCornerShape(14.dp),
+        color = backgroundColor,
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
-                color = if (isSelected) Color.White else Color.Black,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                ),
+                color = contentColor
             )
         }
+    }
+}
+
+@Composable
+private fun AuthTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    isPassword: Boolean = false,
+    error: String? = null,
+    imeAction: ImeAction = ImeAction.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
+) {
+    val borderColor by animateColorAsState(
+        targetValue = if (error != null) JapandiError else JapandiDivider,
+        label = "border"
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { 
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = JapandiEarthyGray
+                ) 
+            },
+            leadingIcon = { 
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (error != null) JapandiError else JapandiSage,
+                    modifier = Modifier.size(22.dp)
+                ) 
+            },
+            shape = RoundedCornerShape(16.dp),
+            isError = error != null,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = JapandiSage,
+                unfocusedBorderColor = borderColor,
+                errorBorderColor = JapandiError,
+                cursorColor = JapandiSage
+            ),
+            visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+            keyboardActions = keyboardActions,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge
+        )
+        
+        AnimatedVisibility(
+            visible = error != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Text(
+                text = error ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = JapandiError,
+                modifier = Modifier.padding(start = 16.dp, top = 6.dp)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Signup - Customer")
+@Composable
+fun PreviewSignupCustomer() {
+    CartifyTheme {
+        SignupContent(
+            nameState = "",
+            emailState = "",
+            passwordState = "",
+            selectedRole = "user",
+            onNameChange = {},
+            onEmailChange = {},
+            onPasswordChange = {},
+            onRoleSelect = {},
+            onSignupClick = {},
+            onLoginClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Signup - Vendor")
+@Composable
+fun PreviewSignupVendor() {
+    CartifyTheme {
+        SignupContent(
+            nameState = "Fresh Market",
+            emailState = "vendor@market.com",
+            passwordState = "securepass",
+            selectedRole = "vendor",
+            onNameChange = {},
+            onEmailChange = {},
+            onPasswordChange = {},
+            onRoleSelect = {},
+            onSignupClick = {},
+            onLoginClick = {}
+        )
     }
 }

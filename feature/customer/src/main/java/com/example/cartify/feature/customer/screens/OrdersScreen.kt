@@ -14,148 +14,138 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.example.cartify.core.common.model.Order
-import com.example.cartify.core.common.navigation.Screen
+import com.example.cartify.core.common.model.Product
+import com.example.cartify.core.common.model.CartItem
 import com.example.cartify.core.common.theme.*
-import com.example.cartify.feature.customer.OrdersState
-import com.example.cartify.feature.customer.OrdersViewModel
+import java.util.Locale
 
+/**
+ * Orders Content - Decoupled UI layer for customer orders.
+ * Focuses on visual presentation and minimalist Japandi design.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrdersScreen(
-    navController: NavController,
-    rootNavController: NavController,
-    viewModel: OrdersViewModel = viewModel()
+fun OrdersContent(
+    orders: List<Order>,
+    isLoading: Boolean = false,
+    selectedTab: String = "All Orders",
+    onTabSelect: (String) -> Unit,
+    onBackClick: () -> Unit,
+    onOrderClick: (Order) -> Unit
 ) {
-    val ordersState by viewModel.ordersState
-    var selectedTab by remember { mutableStateOf("All Order") }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "My Orders",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold, color = JapandiCharcoal),
-                        modifier = Modifier.padding(start = 4.dp)
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Home", tint = JapandiCharcoal)
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
         containerColor = JapandiCanvas
     ) { innerPadding ->
-        when (val state = ordersState) {
-            is OrdersState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = JapandiSage)
-                }
-            }
-            is OrdersState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = state.message, color = JapandiError)
-                        Button(onClick = { viewModel.loadOrders() }, modifier = Modifier.padding(top = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = JapandiSage)) {
-                            Text("Retry")
-                        }
-                    }
-                }
-            }
-            is OrdersState.Success -> {
-                val allOrders = state.orders
-                val filteredOrders = if (selectedTab == "All Order") {
-                    allOrders
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Filter Tabs
+            OrderFilterTabs(
+                selectedTab = selectedTab,
+                onTabSelect = onTabSelect
+            )
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = JapandiSage
+                    )
+                } else if (orders.isEmpty()) {
+                    EmptyOrdersView()
                 } else {
-                    allOrders.filter { it.status.equals(selectedTab, ignoreCase = true) }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                ) {
-                    // Filter Tabs
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp, top = 4.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        val tabs = listOf("All Order", "Pending", "Processing", "Delivered")
-                        items(tabs) { tab ->
-                            val isSelected = selectedTab == tab
-                            Surface(
-                                modifier = Modifier.clickable { selectedTab = tab },
-                                shape = RoundedCornerShape(20.dp),
-                                color = if (isSelected) JapandiSage else JapandiDivider,
-                            ) {
-                                Text(
-                                    text = tab,
-                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                                    color = if (isSelected) Color.White else JapandiCharcoal,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-                    }
-
-                    if (filteredOrders.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = "No orders found in this category", color = JapandiEarthyGray)
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            items(filteredOrders) { order ->
-                                OrderItemCard(
-                                    order = order,
-                                    onClick = {
-                                        rootNavController.navigate(Screen.OrderDetail.createRoute(order.id))
-                                    }
-                                )
-                            }
+                        items(orders) { order ->
+                            OrderItemCard(
+                                order = order,
+                                onClick = { onOrderClick(order) }
+                            )
                         }
                     }
                 }
             }
-            else -> {}
         }
     }
 }
 
 @Composable
-fun OrderItemCard(
+private fun OrderFilterTabs(
+    selectedTab: String,
+    onTabSelect: (String) -> Unit
+) {
+    val tabs = listOf("All Orders", "Pending", "Processing", "Delivered", "Cancelled")
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(tabs) { tab ->
+            val isSelected = selectedTab == tab
+            Surface(
+                modifier = Modifier.clickable { onTabSelect(tab) },
+                shape = RoundedCornerShape(14.dp),
+                color = if (isSelected) JapandiSage else Color.White,
+                border = if (!isSelected) androidx.compose.foundation.BorderStroke(1.dp, JapandiDivider) else null
+            ) {
+                Text(
+                    text = tab,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    color = if (isSelected) Color.White else JapandiCharcoal,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrderItemCard(
     order: Order,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .shadow(1.dp, RoundedCornerShape(20.dp)),
         color = Color.White,
-        shape = RoundedCornerShape(20.dp),
-        shadowElevation = 1.dp
+        shape = RoundedCornerShape(20.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -163,13 +153,13 @@ fun OrderItemCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(72.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(JapandiCanvas),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (order.storeName.contains("Mart", ignoreCase = true)) "🥑" else "📦",
+                    text = if (order.storeName.contains("Green")) "🥦" else "📦",
                     fontSize = 32.sp
                 )
             }
@@ -179,41 +169,95 @@ fun OrderItemCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (order.items.isNotEmpty()) order.items.first().product.name else order.storeName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
                     color = JapandiCharcoal
                 )
                 Text(
                     text = order.date,
-                    color = JapandiEarthyGray,
-                    fontSize = 14.sp
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JapandiEarthyGray
                 )
                 Text(
-                    text = "PKR ${order.totalAmount.toInt()}",
-                    color = JapandiSage,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    text = "PKR ${String.format(Locale.getDefault(), "%.0f", order.totalAmount)}",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Black
+                    ),
+                    color = JapandiSage
                 )
             }
 
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = JapandiDivider.copy(alpha = 0.5f)
-            ) {
-                val statusColor = when(order.status.lowercase()) {
-                    "pending" -> JapandiEarthyGray
-                    "processing" -> JapandiSageLight
-                    "delivered" -> JapandiSage
-                    else -> JapandiCharcoal
-                }
-                Text(
-                    text = order.status,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    fontSize = 12.sp,
-                    color = statusColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            OrderStatusBadge(status = order.status)
         }
     }
+}
+
+@Composable
+private fun OrderStatusBadge(status: String) {
+    val (backgroundColor, contentColor) = when (status.lowercase()) {
+        "delivered" -> JapandiSage.copy(alpha = 0.1f) to JapandiSage
+        "pending" -> Color(0xFFFFF3E0) to Color(0xFFF57C00)
+        "processing" -> Color(0xFFE3F2FD) to Color(0xFF1976D2)
+        "cancelled" -> JapandiError.copy(alpha = 0.1f) to JapandiError
+        else -> JapandiDivider to JapandiCharcoal
+    }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = backgroundColor
+    ) {
+        Text(
+            text = status,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold
+            ),
+            color = contentColor
+        )
+    }
+}
+
+@Composable
+private fun EmptyOrdersView() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "No orders found",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = JapandiCharcoal
+        )
+        Text(
+            text = "Your order history will appear here.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = JapandiEarthyGray,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Orders List")
+@Composable
+fun PreviewOrdersContent() {
+    val mockOrders = listOf(
+        Order("1", "Green Grocers", "Delivered", "24 Oct 2023", 1250.0, listOf(
+            CartItem(Product("1", "Organic Spinach", 150.0, "pack", "", "", "", "", ""), 2)
+        )),
+        Order("2", "Fresh Bakery", "Processing", "Today", 850.0, listOf(
+            CartItem(Product("2", "Whole Grain Bread", 400.0, "loaf", "", "", "", "", ""), 1)
+        )),
+        Order("3", "Dairy Delight", "Pending", "Yesterday", 2100.0, listOf(
+            CartItem(Product("3", "Greek Yogurt", 700.0, "tub", "", "", "", "", ""), 3)
+        ))
+    )
+    OrdersContent(
+        orders = mockOrders,
+        onTabSelect = {},
+        onBackClick = {},
+        onOrderClick = {}
+    )
 }

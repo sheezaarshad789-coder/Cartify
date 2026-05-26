@@ -1,6 +1,5 @@
 package com.example.cartify.data.network.model
 
-import com.google.gson.annotations.SerializedName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -41,6 +40,7 @@ data class CategoryDto(
 data class StoreDto(
     @Serializable(with = AnyToStringSerializer::class) @SerialName("id") val id: String? = null,
     @SerialName("store_id") val storeId: String? = null,
+    @SerialName("user_id") val userId: String? = null,
     @SerialName("name") val name: String? = null,
     @SerialName("Name") val nameCaps: String? = null,
     @SerialName("store_name") val storeName: String? = null,
@@ -75,21 +75,24 @@ data class ProductDto(
 
 @Serializable
 data class CartItemDto(
-    @SerialName("product") val product: ProductDto? = null,
+    @SerialName("user_id") val userId: String? = null,
     @SerialName("product_id") val productId: String = "",
-    @SerialName("quantity") val quantity: Int = 0
+    @SerialName("quantity") val quantity: Int = 0,
+    @SerialName("product") val product: ProductDto? = null
 )
 
 @Serializable
 data class OrderDto(
     @Serializable(with = AnyToStringSerializer::class) @SerialName("id") val id: String = "",
+    @SerialName("user_id") val userId: String = "",
     @SerialName("store_name") val storeName: String = "",
     @SerialName("status") val status: String = "",
     @SerialName("date") val date: String = "",
     @SerialName("total_amount") val totalAmount: Double = 0.0,
     @SerialName("items") val items: List<CartItemDto> = emptyList(),
     @SerialName("customer_name") val customerName: String? = null,
-    @SerialName("customer_address") val customerAddress: String? = null
+    @SerialName("customer_address") val customerAddress: String? = null,
+    @SerialName("vendor_id") val vendorId: String? = null
 )
 
 @Serializable
@@ -121,11 +124,6 @@ data class UserDto(
 )
 
 @Serializable
-data class UpdateOrderStatusDto(
-    @SerialName("status") val status: String
-)
-
-@Serializable
 data class StoreDetailDto(
     @SerialName("store") val store: StoreDto,
     @SerialName("products") val products: List<ProductDto> = emptyList()
@@ -149,6 +147,7 @@ data class OrderTrackingDto(
 @Serializable
 data class NotificationDto(
     @Serializable(with = AnyToStringSerializer::class) @SerialName("id") val id: String,
+    @SerialName("user_id") val userId: String? = null,
     @SerialName("title") val title: String,
     @SerialName("message") val message: String,
     @SerialName("time") val time: String,
@@ -165,6 +164,7 @@ data class FaqDto(
 @Serializable
 data class AddressDto(
     @Serializable(with = AnyToStringSerializer::class) @SerialName("id") val id: String,
+    @SerialName("user_id") val userId: String? = null,
     @SerialName("title") val title: String,
     @SerialName("full_address") val fullAddress: String,
     @SerialName("is_default") val isDefault: Boolean = false
@@ -173,6 +173,8 @@ data class AddressDto(
 @Serializable
 data class MessageDto(
     @Serializable(with = AnyToStringSerializer::class) @SerialName("id") val id: String,
+    @SerialName("user_id") val userId: String? = null,
+    @SerialName("receiver_id") val receiverId: String? = null,
     @SerialName("sender_name") val senderName: String,
     @SerialName("last_message") val lastMessage: String,
     @SerialName("time") val time: String,
@@ -184,4 +186,9 @@ data class VendorStatsDto(
     @SerialName("total_sales") val totalSales: Double = 0.0,
     @SerialName("active_orders") val activeOrders: Int = 0,
     @SerialName("total_products") val totalProducts: Int = 0
+)
+
+@Serializable
+data class UpdateOrderStatusDto(
+    @SerialName("status") val status: String
 )

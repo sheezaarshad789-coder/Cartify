@@ -6,9 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartify.core.common.model.*
-import com.example.cartify.core.common.util.UserSession
+import com.example.cartify.core.common.local.UserSession
 import com.example.cartify.data.network.model.*
-import com.example.cartify.data.network.remote.*
 import com.example.cartify.data.network.repository.SupabaseRepository
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -80,7 +79,7 @@ class VendorViewModel(application: Application) : AndroidViewModel(application) 
     private fun observeOrders() {
         if (storeId.isEmpty()) return
         viewModelScope.launch {
-            SupabaseRepository.observeVendorOrders(storeId).collectLatest { updatedOrders ->
+            SupabaseRepository.observeVendorOrders(storeId,).collectLatest { updatedOrders ->
                 val statsResult = SupabaseRepository.fetchVendorStats(storeId)
                 _state.value = _state.value.copy(
                     recentOrders = updatedOrders,

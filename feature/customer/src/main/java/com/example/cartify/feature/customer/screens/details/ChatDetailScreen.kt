@@ -1,6 +1,5 @@
 package com.example.cartify.feature.customer.screens.details
 
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,171 +17,205 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import com.example.cartify.core.common.model.Message
 import com.example.cartify.core.common.theme.*
-import com.example.cartify.feature.customer.ChatState
-import com.example.cartify.feature.customer.ChatViewModel
 
+/**
+ * Chat Detail Content - Decoupled UI layer for real-time messaging.
+ * Uses State Hoisting for message input and list display.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatDetailScreen(
-    navController: NavController,
-    otherUserId: String?,
-    viewModel: ChatViewModel = viewModel()
+fun ChatDetailContent(
+    otherUserName: String,
+    messages: List<Message>,
+    inputText: String,
+    isLoading: Boolean = false,
+    onInputTextChange: (String) -> Unit,
+    onBackClick: () -> Unit,
+    onSendMessage: () -> Unit,
+    onQuickReplyClick: (String) -> Unit
 ) {
-    var messageText by remember { mutableStateOf("") }
-    val state by viewModel.chatState
-
-    val decodedOtherId = remember(otherUserId) {
-        Uri.decode(otherUserId ?: "Vendor")
-    }
-
-    LaunchedEffect(decodedOtherId) {
-        if (decodedOtherId.isNotEmpty() && decodedOtherId != "Vendor") {
-            viewModel.loadMessages(decodedOtherId)
-        }
-    }
-
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            Surface(shadowElevation = 4.dp) {
                 TopAppBar(
                     modifier = Modifier.height(84.dp),
                     title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxHeight()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(JapandiSage.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = decodedOtherId.take(1).uppercase(),
-                                    color = JapandiSage,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(verticalArrangement = Arrangement.Center) {
-                                Text(
-                                    text = decodedOtherId.take(10) + if(decodedOtherId.length > 10) "..." else "",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = JapandiCharcoal)
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Online", style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF4CAF50)))
-                                }
-                            }
-                        }
+                        ChatHeaderTitle(userName = otherUserName)
                     },
                     navigationIcon = {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight()) {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = JapandiCharcoal)
+                            IconButton(onClick = onBackClick) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                             }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
                 )
             }
         },
         bottomBar = {
-            Column(modifier = Modifier.background(Color.White).navigationBarsPadding()) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val quickReplies = listOf("Is it available?", "When will it be delivered?", "Thanks!", "OK")
-                    items(quickReplies) { reply ->
-                        Surface(
-                            modifier = Modifier.clickable { messageText = reply },
-                            shape = RoundedCornerShape(20.dp),
-                            color = Color.White,
-                            border = BorderStroke(1.dp, JapandiDivider)
-                        ) {
-                            Text(text = reply, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), fontSize = 13.sp, color = JapandiCharcoal)
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextField(
-                        value = messageText,
-                        onValueChange = { messageText = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Type a message...", color = JapandiEarthyGray) },
-                        shape = RoundedCornerShape(24.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = JapandiCanvas,
-                            unfocusedContainerColor = JapandiCanvas,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            cursorColor = JapandiSage
-                        )
-                    )
-                    if (messageText.isNotBlank()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(
-                            onClick = {
-                                viewModel.sendMessage(decodedOtherId, messageText)
-                                messageText = ""
-                            },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = JapandiSage)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White)
-                        }
-                    }
-                }
-            }
-        }
+            ChatBottomBar(
+                inputText = inputText,
+                onInputTextChange = onInputTextChange,
+                onSendMessage = onSendMessage,
+                onQuickReplyClick = onQuickReplyClick
+            )
+        },
+        containerColor = JapandiCanvas
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding).background(JapandiCanvas)) {
-            when (val chatState = state) {
-                is ChatState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = JapandiSage)
-                is ChatState.Error -> Text(chatState.message, modifier = Modifier.align(Alignment.Center), color = JapandiError)
-                is ChatState.Success -> {
-                    val messages = chatState.messages
-                    if (messages.isEmpty()) {
-                        Text("No messages yet", modifier = Modifier.align(Alignment.Center), color = JapandiEarthyGray)
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            reverseLayout = false
-                        ) {
-                            items(messages) { message ->
-                                ChatBubbleModern(
-                                    text = message.lastMessage,
-                                    time = message.time,
-                                    isMe = message.isMe
-                                )
-                            }
-                        }
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = JapandiSage)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(messages) { message ->
+                        ChatBubble(
+                            text = message.lastMessage,
+                            time = message.time,
+                            isMe = message.isMe
+                        )
                     }
                 }
-                else -> {}
             }
         }
     }
 }
 
 @Composable
-fun ChatBubbleModern(text: String, time: String, isMe: Boolean) {
+private fun ChatHeaderTitle(userName: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxHeight()
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(JapandiSage.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = userName.take(1).uppercase(),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    color = JapandiSage,
+                    fontWeight = FontWeight.Black
+                )
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(verticalArrangement = Arrangement.Center) {
+            Text(
+                text = userName,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = JapandiCharcoal
+                )
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Online",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color(0xFF4CAF50),
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatBottomBar(
+    inputText: String,
+    onInputTextChange: (String) -> Unit,
+    onSendMessage: () -> Unit,
+    onQuickReplyClick: (String) -> Unit
+) {
+    Surface(
+        color = Color.White,
+        shadowElevation = 16.dp,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(modifier = Modifier.background(Color.White).navigationBarsPadding()) {
+            QuickRepliesRow(onQuickReplyClick = onQuickReplyClick)
+
+            Row(
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 24.dp, top = 8.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = inputText,
+                    onValueChange = onInputTextChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Type a message...", color = JapandiEarthyGray) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = JapandiCanvas,
+                        unfocusedContainerColor = JapandiCanvas,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = JapandiSage
+                    ),
+                    maxLines = 4
+                )
+                
+                if (inputText.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconButton(
+                        onClick = onSendMessage,
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = JapandiSage),
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickRepliesRow(onQuickReplyClick: (String) -> Unit) {
+    val quickReplies = listOf("Is it available?", "When can I expect delivery?", "Thanks!", "OK")
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(quickReplies) { reply ->
+            Surface(
+                modifier = Modifier.clickable { onQuickReplyClick(reply) },
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, JapandiDivider)
+            ) {
+                Text(
+                    text = reply,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = JapandiCharcoal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatBubble(text: String, time: String, isMe: Boolean) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
@@ -192,18 +225,43 @@ fun ChatBubbleModern(text: String, time: String, isMe: Boolean) {
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
-                bottomStart = if (isMe) 16.dp else 4.dp,
-                bottomEnd = if (isMe) 4.dp else 16.dp
+                bottomStart = if (isMe) 16.dp else 2.dp,
+                bottomEnd = if (isMe) 2.dp else 16.dp
             ),
             shadowElevation = 1.dp
         ) {
             Text(
                 text = text,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                color = if (isMe) Color.White else JapandiCharcoal,
-                fontSize = 15.sp
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = if (isMe) Color.White else JapandiCharcoal
+                )
             )
         }
-        Text(text = time, fontSize = 10.sp, color = JapandiEarthyGray, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            text = time,
+            style = MaterialTheme.typography.labelSmall,
+            color = JapandiEarthyGray.copy(alpha = 0.6f),
+            modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
+        )
     }
+}
+
+@Preview(showBackground = true, name = "Chat View - Mock Data")
+@Composable
+fun PreviewChatDetail() {
+    val mockMessages = listOf(
+        Message("1", "Store", "Hello! How can we help you today?", "10:00 AM", false),
+        Message("2", "Me", "Hi, is the organic avocado still in stock?", "10:05 AM", true),
+        Message("3", "Store", "Yes, we just received a fresh batch!", "10:06 AM", false)
+    )
+    ChatDetailContent(
+        otherUserName = "Green Grocers",
+        messages = mockMessages,
+        inputText = "Great, I'll order two kg",
+        onInputTextChange = {},
+        onBackClick = {},
+        onSendMessage = {},
+        onQuickReplyClick = {}
+    )
 }

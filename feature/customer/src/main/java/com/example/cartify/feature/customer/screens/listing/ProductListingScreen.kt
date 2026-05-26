@@ -20,56 +20,58 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.cartify.core.common.navigation.Screen
+import com.example.cartify.core.common.model.Product
 import com.example.cartify.core.common.theme.*
 import com.example.cartify.core.common.ui.components.ProductCard
-import com.example.cartify.feature.customer.ProductListingState
-import com.example.cartify.feature.customer.ProductListingViewModel
 
+/**
+ * Product Listing Content - Decoupled UI layer for browsing products by category or search.
+ * Focuses on a clean grid layout and polished filtering interface.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductListingScreen(
-    navController: NavController,
-    categoryId: String?,
-    categoryName: String?,
-    viewModel: ProductListingViewModel = viewModel()
+fun ProductListingContent(
+    categoryName: String,
+    products: List<Product>,
+    searchQuery: String,
+    selectedSort: String,
+    isLoading: Boolean = false,
+    onSearchQueryChange: (String) -> Unit,
+    onSortSelect: (String) -> Unit,
+    onFilterClick: () -> Unit,
+    onBackClick: () -> Unit,
+    onProductClick: (Product) -> Unit,
+    onFavoriteToggle: (Product) -> Unit,
+    onAddToCart: (Product) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedSort by remember { mutableStateOf("Popular") }
-    val listingState by viewModel.listingState
-
     val sortOptions = listOf("Popular", "Price: Low to High", "Price: High to Low", "Newest")
-
-    LaunchedEffect(categoryId) {
-        viewModel.loadProductsByCategory(categoryId)
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = categoryName ?: "Products",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold, color = JapandiCharcoal),
-                        modifier = Modifier.padding(start = 8.dp)
+                        text = categoryName,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Open Filters */ }) {
+                    IconButton(onClick = onFilterClick) {
                         Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = JapandiSage)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
         containerColor = JapandiCanvas
@@ -79,100 +81,147 @@ fun ProductListingScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Search Bar
-            TextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Search in $categoryName...", color = JapandiEarthyGray) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = JapandiSage) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .shadow(2.dp, RoundedCornerShape(12.dp)),
-                shape = RoundedCornerShape(12.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = true
+            // Search Bar Section
+            SearchBarSection(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                placeholder = "Search in $categoryName..."
             )
 
             // Sort Options
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(sortOptions) { option ->
-                    FilterChip(
-                        selected = selectedSort == option,
-                        onClick = { selectedSort = option },
-                        label = { Text(option) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = JapandiSage,
-                            selectedLabelColor = Color.White,
-                            labelColor = JapandiEarthyGray
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        border = null
-                    )
-                }
-            }
+            SortOptionsRow(
+                options = sortOptions,
+                selectedOption = selectedSort,
+                onOptionSelect = onSortSelect
+            )
 
             Box(modifier = Modifier.fillMaxSize()) {
-                when (val state = listingState) {
-                    is ProductListingState.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = JapandiSage)
-                    }
-                    is ProductListingState.Error -> {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = state.message, color = JapandiError)
-                            Button(onClick = { viewModel.loadProductsByCategory(categoryId) }, modifier = Modifier.padding(top = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = JapandiSage)) {
-                                Text("Retry")
-                            }
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = JapandiSage
+                    )
+                } else if (products.isEmpty()) {
+                    EmptyListingView()
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(products) { product ->
+                            ProductCard(
+                                product = product,
+                                isFavorite = product.isFavorite,
+                                onClick = { onProductClick(product) },
+                                onFavoriteClick = { onFavoriteToggle(product) },
+                                onAddToCart = { onAddToCart(product) }
+                            )
                         }
+                        item { Spacer(modifier = Modifier.height(24.dp)) }
                     }
-                    is ProductListingState.Success -> {
-                        val products = state.products
-                        val filteredProducts = products.filter {
-                            it.name.contains(searchQuery, ignoreCase = true)
-                        }.let { list ->
-                            when (selectedSort) {
-                                "Price: Low to High" -> list.sortedBy { it.price }
-                                "Price: High to Low" -> list.sortedByDescending { it.price }
-                                else -> list
-                            }
-                        }
-
-                        if (filteredProducts.isEmpty()) {
-                            Text("No products found", modifier = Modifier.align(Alignment.Center), color = JapandiEarthyGray)
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(filteredProducts) { product ->
-                                    ProductCard(
-                                        product = product,
-                                        isFavorite = product.isFavorite,
-                                        onClick = { navController.navigate(Screen.ProductDetail.createRoute(product.id)) },
-                                        onFavoriteClick = { /* TODO */ },
-                                        onAddToCart = { /* TODO */ }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    else -> {}
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SearchBarSection(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .shadow(1.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White
+    ) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text(placeholder, color = JapandiEarthyGray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = JapandiSage) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                cursorColor = JapandiSage
+            ),
+            singleLine = true
+        )
+    }
+}
+
+@Composable
+private fun SortOptionsRow(
+    options: List<String>,
+    selectedOption: String,
+    onOptionSelect: (String) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(options) { option ->
+            val isSelected = selectedOption == option
+            Surface(
+                modifier = Modifier.clickable { onOptionSelect(option) },
+                shape = RoundedCornerShape(12.dp),
+                color = if (isSelected) JapandiSage else Color.White,
+                border = if (!isSelected) androidx.compose.foundation.BorderStroke(1.dp, JapandiDivider) else null
+            ) {
+                Text(
+                    text = option,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    ),
+                    color = if (isSelected) Color.White else JapandiCharcoal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyListingView() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("No products found", style = MaterialTheme.typography.titleMedium, color = JapandiEarthyGray)
+    }
+}
+
+@Preview(showBackground = true, name = "Product Listing")
+@Composable
+fun PreviewProductListing() {
+    val mockProducts = listOf(
+        Product("1", "Organic Avocado", 450.0, "kg", "", "", "1", "Green Mart", "1"),
+        Product("2", "Red Apples", 300.0, "kg", "", "", "1", "Green Mart", "1"),
+        Product("3", "Whole Milk", 180.0, "L", "", "", "2", "Dairy Farm", "3"),
+        Product("4", "Sourdough Bread", 250.0, "loaf", "", "", "3", "Local Bakery", "4")
+    )
+    ProductListingContent(
+        categoryName = "Fresh Produce",
+        products = mockProducts,
+        searchQuery = "",
+        selectedSort = "Popular",
+        onSearchQueryChange = {},
+        onSortSelect = {},
+        onFilterClick = {},
+        onBackClick = {},
+        onProductClick = {},
+        onFavoriteToggle = {},
+        onAddToCart = {}
+    )
 }

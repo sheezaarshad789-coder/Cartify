@@ -4,7 +4,10 @@ import android.app.Application
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.cartify.core.common.local.UserSession
+import com.example.cartify.data.network.repository.SupabaseRepository
+import kotlinx.coroutines.launch
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private val userSession = UserSession(application)
@@ -30,9 +33,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         _isVendorMode.value = newMode
     }
 
-    fun updateProfileImage(uri: String) {
-        userSession.saveProfileImage(uri)
+    fun updateProfileImage(uri: String, imageBytes: ByteArray?) {
         _profileImageUri.value = uri
+        userSession.saveProfileImage(uri)
+        
+        viewModelScope.launch {
+            SupabaseRepository.updateProfile(_userName.value, imageBytes)
+        }
     }
 
     fun refreshUserData() {

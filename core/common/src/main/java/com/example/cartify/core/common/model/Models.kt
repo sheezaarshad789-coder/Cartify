@@ -21,6 +21,13 @@ data class Store(
     val isFavorite: Boolean = false
 )
 
+data class StoreSettings(
+    val storeName: String,
+    val deliveryTime: String,
+    val logoUrl: String?,
+    val bannerUrl: String?
+)
+
 data class Product(
     val id: String,
     val name: String,
@@ -31,6 +38,7 @@ data class Product(
     val storeId: String,
     val storeName: String,
     val categoryId: String,
+    val rating: Double = 4.9,
     val isFavorite: Boolean = false,
     val isAvailable: Boolean = true
 )
@@ -49,6 +57,16 @@ data class Order(
     val items: List<CartItem>,
     val customerName: String = "Unknown",
     val customerAddress: String = "No Address"
+)
+
+enum class UserRole { CUSTOMER, VENDOR, ADMIN }
+
+data class UserProfile(
+    val id: String,
+    val name: String,
+    val email: String,
+    val role: UserRole,
+    val avatarUrl: String? = null
 )
 
 data class Message(

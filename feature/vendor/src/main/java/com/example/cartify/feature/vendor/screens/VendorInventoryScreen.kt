@@ -1,9 +1,11 @@
 package com.example.cartify.feature.vendor.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,97 +17,87 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.cartify.core.common.navigation.Screen
-import com.example.cartify.feature.vendor.VendorViewModel
+import com.example.cartify.core.common.model.Product
+import com.example.cartify.core.common.theme.*
 
+/**
+ * Vendor Inventory Content - Decoupled UI layer for managing store products.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VendorInventoryScreen(navController: NavController, viewModel: VendorViewModel = viewModel()) {
-    val state by viewModel.state
-    var searchQuery by remember { mutableStateOf("") }
-    val cartifyGreen = MaterialTheme.colorScheme.primary
-
-    val filteredProducts = state.products.filter { 
-        it.name.contains(searchQuery, ignoreCase = true) 
-    }
-
+fun VendorInventoryContent(
+    products: List<Product>,
+    searchQuery: String,
+    isLoading: Boolean = false,
+    onSearchQueryChange: (String) -> Unit,
+    onBackClick: () -> Unit,
+    onEditProduct: (Product) -> Unit,
+    onDeleteProduct: (Product) -> Unit,
+    onToggleStock: (Product, Boolean) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        text = "Inventory Management", 
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) 
+                        text = "Inventory",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
-        containerColor = Color.White
+        containerColor = JapandiCanvas
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF7F7F7))
         ) {
-            // Professional Search Feature
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("Search your products...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
+            InventorySearchField(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange
             )
 
-            if (state.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = cartifyGreen)
-                }
-            } else if (filteredProducts.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(if (searchQuery.isEmpty()) "No products added" else "No results found", color = Color.Gray)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    items(filteredProducts) { product ->
-                        InventoryItemCard(
-                            name = product.name,
-                            price = "PKR ${product.price}/${product.unit}",
-                            imageUrl = product.imageUrl,
-                            isAvailable = product.isAvailable,
-                            onDelete = { viewModel.deleteProduct(product.id) },
-                            onEdit = { navController.navigate(Screen.EditProduct.createRoute(product.id)) },
-                            onToggleStock = { viewModel.toggleProductAvailability(product.id, it) }
-                        )
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = JapandiSage
+                    )
+                } else if (products.isEmpty()) {
+                    EmptyInventoryView(isSearching = searchQuery.isNotEmpty())
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(products) { product ->
+                            InventoryItemCard(
+                                product = product,
+                                onEdit = { onEditProduct(product) },
+                                onDelete = { onDeleteProduct(product) },
+                                onToggleStock = { onToggleStock(product, it) }
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(24.dp)) }
                     }
                 }
             }
@@ -114,73 +106,128 @@ fun VendorInventoryScreen(navController: NavController, viewModel: VendorViewMod
 }
 
 @Composable
-fun InventoryItemCard(
-    name: String,
-    price: String,
-    imageUrl: String,
-    isAvailable: Boolean,
-    onDelete: () -> Unit,
+private fun InventoryItemCard(
+    product: Product,
     onEdit: () -> Unit,
+    onDelete: () -> Unit,
     onToggleStock: (Boolean) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(1.dp, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(70.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                Surface(
+                    modifier = Modifier.size(72.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = JapandiCanvas
+                ) {
+                    AsyncImage(
+                        model = product.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(text = price, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = product.name,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = JapandiCharcoal
+                    )
+                    Text(
+                        text = "PKR ${product.price}/${product.unit}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = JapandiSage
+                    )
                 }
                 
                 Row {
                     IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Gray)
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = JapandiEarthyGray, modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f))
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = JapandiError.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
                     }
                 }
             }
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp, color = Color.LightGray)
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = JapandiDivider.copy(alpha = 0.5f)
+            )
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (isAvailable) "In Stock" else "Out of Stock",
-                    color = if (isAvailable) Color(0xFF4CAF50) else Color.Red,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(if (product.isAvailable) Color(0xFF4CAF50) else JapandiError, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (product.isAvailable) "In Stock" else "Out of Stock",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (product.isAvailable) Color(0xFF4CAF50) else JapandiError
+                    )
+                }
+                
                 Switch(
-                    checked = isAvailable,
+                    checked = product.isAvailable,
                     onCheckedChange = onToggleStock,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White, 
                         checkedTrackColor = Color(0xFF4CAF50),
                         uncheckedThumbColor = Color.White,
-                        uncheckedTrackColor = Color.LightGray
+                        uncheckedTrackColor = JapandiDivider
                     )
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun InventorySearchField(query: String, onQueryChange: (String) -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).shadow(1.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White
+    ) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text("Search inventory...", color = JapandiEarthyGray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = JapandiSage) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
+            singleLine = true
+        )
+    }
+}
+
+@Composable
+private fun EmptyInventoryView(isSearching: Boolean) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = if (isSearching) "No products match your search" else "Your inventory is empty",
+            color = JapandiEarthyGray
+        )
     }
 }

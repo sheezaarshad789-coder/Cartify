@@ -1,5 +1,6 @@
 package com.example.cartify.feature.customer.screens.details
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,31 +14,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.cartify.core.common.navigation.Screen
+import com.example.cartify.core.common.model.Product
 import com.example.cartify.core.common.theme.*
-import com.example.cartify.feature.customer.SearchState
-import com.example.cartify.feature.customer.SearchViewModel
 import com.example.cartify.core.common.ui.components.ProductCard
-import com.example.cartify.feature.customer.CartViewModel
 
+/**
+ * Search Results Content - Decoupled UI layer for displaying search results.
+ * Clean, minimalist layout following Japandi design principles.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchResultsScreen(
-    navController: NavController,
-    query: String?,
-    viewModel: SearchViewModel = viewModel(),
-    cartViewModel: CartViewModel = viewModel()
+fun SearchResultsContent(
+    query: String,
+    products: List<Product>,
+    isLoading: Boolean = false,
+    onBackClick: () -> Unit,
+    onProductClick: (Product) -> Unit,
+    onFavoriteToggle: (Product) -> Unit,
+    onAddToCart: (Product) -> Unit
 ) {
-    val searchState by viewModel.searchState
     val isItemsQuery = query == "Items" || query == "Popular"
-
-    LaunchedEffect(query) {
-        query?.let { viewModel.search(it) }
-    }
 
     Scaffold(
         topBar = {
@@ -45,80 +44,113 @@ fun SearchResultsScreen(
                 title = {
                     Text(
                         text = if (isItemsQuery) "Popular Items" else "Results for \"$query\"",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold, color = JapandiCharcoal),
-                        modifier = Modifier.padding(start = 8.dp)
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
         containerColor = JapandiCanvas
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (val state = searchState) {
-                is SearchState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = JapandiSage)
-                }
-                is SearchState.Error -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = state.message, color = JapandiError)
-                        Button(onClick = { query?.let { viewModel.search(it) } }, modifier = Modifier.padding(top = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = JapandiSage)) {
-                            Text("Retry")
-                        }
-                    }
-                }
-                is SearchState.Success -> {
-                    val filteredProducts = state.products
-                    if (filteredProducts.isEmpty()) {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(80.dp), tint = JapandiEarthyGray.copy(alpha = 0.3f))
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("No items found", fontWeight = FontWeight.Bold, color = JapandiCharcoal)
-                            Text("Try a different keyword", color = JapandiEarthyGray, fontSize = 14.sp)
-                        }
-                    } else {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "${filteredProducts.size} items found",
-                                modifier = Modifier.padding(16.dp),
-                                color = JapandiEarthyGray,
-                                fontSize = 14.sp
-                            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = JapandiSage
+                )
+            } else if (products.isEmpty()) {
+                EmptySearchResultsView()
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = "${products.size} items matching your search",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = JapandiEarthyGray,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    )
 
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                items(filteredProducts) { product ->
-                                    ProductCard(
-                                        product = product,
-                                        isFavorite = product.isFavorite,
-                                        onClick = { navController.navigate(Screen.ProductDetail.createRoute(product.id)) },
-                                        onFavoriteClick = { viewModel.toggleFavorite(product) },
-                                        onAddToCart = { cartViewModel.addToCart(product) }
-                                    )
-                                }
-                            }
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(products) { product ->
+                            ProductCard(
+                                product = product,
+                                isFavorite = product.isFavorite,
+                                onClick = { onProductClick(product) },
+                                onFavoriteClick = { onFavoriteToggle(product) },
+                                onAddToCart = { onAddToCart(product) }
+                            )
                         }
+                        item { Spacer(modifier = Modifier.height(24.dp)) }
                     }
                 }
-                else -> {}
             }
         }
     }
+}
+
+@Composable
+private fun EmptySearchResultsView() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(JapandiDivider.copy(alpha = 0.2f), RoundedCornerShape(24.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = JapandiEarthyGray.copy(alpha = 0.5f)
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "No items found",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = JapandiCharcoal
+        )
+        Text(
+            text = "Try adjusting your search or filters.",
+            style = MaterialTheme.typography.bodySmall,
+            color = JapandiEarthyGray,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Search Results - Products")
+@Composable
+fun PreviewSearchResults() {
+    val mockProducts = listOf(
+        Product("1", "Organic Avocado", 450.0, "kg", "", "", "1", "Green Mart", "1"),
+        Product("2", "Red Apples", 300.0, "kg", "", "", "1", "Green Mart", "1"),
+        Product("3", "Whole Milk", 180.0, "L", "", "", "2", "Dairy Farm", "3")
+    )
+    SearchResultsContent(
+        query = "Fresh",
+        products = mockProducts,
+        onBackClick = {},
+        onProductClick = {},
+        onFavoriteToggle = {},
+        onAddToCart = {}
+    )
 }

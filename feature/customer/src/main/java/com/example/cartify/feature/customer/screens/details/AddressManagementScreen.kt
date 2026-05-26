@@ -13,39 +13,46 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.example.cartify.core.common.model.Address
-import com.example.cartify.core.common.navigation.Screen
 import com.example.cartify.core.common.theme.*
-import com.example.cartify.feature.customer.AddressState
-import com.example.cartify.feature.customer.AddressViewModel
 
+/**
+ * Address Management Content - Decoupled UI layer for managing user addresses.
+ * Focuses on a clean, minimalist Japandi aesthetic.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddressManagementScreen(navController: NavController, viewModel: AddressViewModel = viewModel()) {
-    val addressState by viewModel.addressState
-
+fun AddressManagementContent(
+    addresses: List<Address>,
+    isLoading: Boolean = false,
+    onBackClick: () -> Unit,
+    onAddAddressClick: () -> Unit,
+    onDeleteAddressClick: (Address) -> Unit,
+    onSetDefaultAddress: (Address) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "My Addresses",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold, color = JapandiCharcoal),
-                        modifier = Modifier.padding(start = 8.dp)
+                        text = "My Addresses",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
@@ -54,10 +61,11 @@ fun AddressManagementScreen(navController: NavController, viewModel: AddressView
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(Screen.AddAddress.route) },
+                onClick = onAddAddressClick,
                 containerColor = JapandiSage,
                 contentColor = Color.White,
                 shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                 modifier = Modifier.navigationBarsPadding()
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Address")
@@ -66,56 +74,49 @@ fun AddressManagementScreen(navController: NavController, viewModel: AddressView
         containerColor = JapandiCanvas
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (val state = addressState) {
-                is AddressState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = JapandiSage)
-                }
-                is AddressState.Error -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = state.message, color = JapandiError)
-                        Button(onClick = { viewModel.loadAddresses() }, modifier = Modifier.padding(top = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = JapandiSage)) {
-                            Text("Retry")
-                        }
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = JapandiSage
+                )
+            } else if (addresses.isEmpty()) {
+                EmptyAddressesView()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(addresses) { address ->
+                        AddressItemCard(
+                            address = address,
+                            onDeleteClick = { onDeleteAddressClick(address) },
+                            onCardClick = { onSetDefaultAddress(address) }
+                        )
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
-                is AddressState.Success -> {
-                    val addresses = state.addresses
-                    if (addresses.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No addresses found", color = JapandiEarthyGray)
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            items(addresses) { address ->
-                                AddressItemCard(address)
-                            }
-                            item {
-                                Spacer(modifier = Modifier.height(80.dp))
-                            }
-                        }
-                    }
-                }
-                else -> {}
             }
         }
     }
 }
 
 @Composable
-fun AddressItemCard(address: Address) {
+private fun AddressItemCard(
+    address: Address,
+    onDeleteClick: () -> Unit,
+    onCardClick: () -> Unit
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(1.dp, RoundedCornerShape(20.dp)),
         color = Color.White,
-        shape = RoundedCornerShape(16.dp),
-        shadowElevation = 1.dp,
-        border = if (address.isDefault) androidx.compose.foundation.BorderStroke(1.dp, JapandiSage.copy(alpha = 0.3f)) else null
+        shape = RoundedCornerShape(20.dp),
+        border = if (address.isDefault) androidx.compose.foundation.BorderStroke(1.5.dp, JapandiSage) else null,
+        onClick = onCardClick
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -123,15 +124,15 @@ fun AddressItemCard(address: Address) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (address.isDefault) JapandiSage else JapandiDivider.copy(alpha = 0.5f)),
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (address.isDefault) JapandiSage else JapandiSage.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = null,
-                    tint = if (address.isDefault) Color.White else JapandiEarthyGray,
+                    tint = if (address.isDefault) Color.White else JapandiSage,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -140,29 +141,97 @@ fun AddressItemCard(address: Address) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = address.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = JapandiCharcoal)
+                    Text(
+                        text = address.title,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = JapandiCharcoal
+                    )
                     if (address.isDefault) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             color = JapandiSage.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(4.dp)
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                "Default",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                color = JapandiSage,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                                text = "DEFAULT",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Black,
+                                    color = JapandiSage
+                                )
                             )
                         }
                     }
                 }
-                Text(text = address.fullAddress, fontSize = 13.sp, color = JapandiEarthyGray)
+                Text(
+                    text = address.fullAddress,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JapandiEarthyGray,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
 
-            IconButton(onClick = { /* Delete logic */ }) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = JapandiEarthyGray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = JapandiEarthyGray.copy(alpha = 0.4f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
+}
+
+@Composable
+private fun EmptyAddressesView() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(JapandiDivider.copy(alpha = 0.2f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = JapandiEarthyGray.copy(alpha = 0.5f)
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "No addresses saved",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = JapandiCharcoal
+        )
+        Text(
+            text = "Add your delivery addresses for a faster checkout.",
+            style = MaterialTheme.typography.bodySmall,
+            color = JapandiEarthyGray,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Address List")
+@Composable
+fun PreviewAddressManagement() {
+    val mockAddresses = listOf(
+        Address("1", "Home", "123 Serenity Lane, Heights Apartment, Karachi", true),
+        Address("2", "Office", "Business Center, Floor 4, I.I Chundrigar Road, Karachi", false),
+        Address("3", "Parent's House", "Street 5, Gulshan-e-Iqbal, Karachi", false)
+    )
+    AddressManagementContent(
+        addresses = mockAddresses,
+        onBackClick = {},
+        onAddAddressClick = {},
+        onDeleteAddressClick = {},
+        onSetDefaultAddress = {}
+    )
 }

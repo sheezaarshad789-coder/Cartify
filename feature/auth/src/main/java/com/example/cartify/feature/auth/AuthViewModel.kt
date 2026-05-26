@@ -5,7 +5,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.cartify.core.common.util.UserSession
+import com.example.cartify.core.common.local.UserSession
 import com.example.cartify.data.network.remote.SupabaseManager
 import com.example.cartify.data.network.repository.SupabaseRepository
 import io.github.jan.supabase.gotrue.auth

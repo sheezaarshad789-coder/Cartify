@@ -1,9 +1,6 @@
 package com.example.cartify.feature.vendor.screens
 
 import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,211 +18,323 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.cartify.core.common.model.Category
-import com.example.cartify.core.common.util.UserSession
-import com.example.cartify.data.network.model.ProductDto
-import com.example.cartify.data.network.repository.SupabaseRepository
-import com.example.cartify.feature.vendor.VendorViewModel
+import com.example.cartify.core.common.theme.*
 
+/**
+ * Add Product Content - Decoupled UI layer for vendors to add new items.
+ * Clean Japandi aesthetic with a focus on ease of use and minimalist form design.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddProductScreen(navController: NavController, viewModel: VendorViewModel = viewModel()) {
-    var name by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("kg") }
-    var description by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf<Category?>(null) }
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
+fun AddProductContent(
+    name: String,
+    price: String,
+    unit: String,
+    description: String,
+    selectedCategory: Category?,
+    categories: List<Category>,
+    imageUri: Uri?,
+    isLoading: Boolean = false,
+    onNameChange: (String) -> Unit,
+    onPriceChange: (String) -> Unit,
+    onUnitChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onCategorySelect: (Category) -> Unit,
+    onImagePickerClick: () -> Unit,
+    onBackClick: () -> Unit,
+    onUploadClick: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
-
-    val state by viewModel.state
-    val context = LocalContext.current
-    val cartifyGreen = MaterialTheme.colorScheme.primary
-    val userSession = remember { UserSession(context) }
-
-    LaunchedEffect(Unit) {
-        SupabaseRepository.fetchCategories().onSuccess { categories = it }
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> imageUri = uri }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        text = "Add New Product", 
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) 
+                        text = "Add Product",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
-        containerColor = Color.White
+        containerColor = JapandiCanvas
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Optimized Image Picker
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(140.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFF0F0F0))
-                    .border(BorderStroke(1.dp, Color.LightGray), RoundedCornerShape(16.dp))
-                    .clickable { launcher.launch("image/*") },
-                contentAlignment = Alignment.Center
+                    .weight(1f)
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (imageUri != null) {
-                    AsyncImage(
-                        model = imageUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = Color.Gray)
-                        Text("Add Photo", color = Color.Gray, fontSize = 12.sp)
-                    }
-                }
-            }
+                Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Product Name") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Category Dropdown
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = it },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedCategory?.name ?: "Select Category",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Category") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                // Image Selection Area
+                ProductImagePicker(
+                    imageUri = imageUri,
+                    onClick = onImagePickerClick
                 )
-                ExposedDropdownMenu(
+
+                // Basic Info Section
+                AddProductFormField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    label = "Product Name",
+                    placeholder = "e.g. Organic Hass Avocado"
+                )
+
+                // Category Dropdown
+                CategoryDropdown(
+                    selectedCategory = selectedCategory,
+                    categories = categories,
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    onExpandedChange = { expanded = it },
+                    onCategorySelect = onCategorySelect
+                )
+
+                // Price and Unit Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    categories.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category.name) },
-                            onClick = {
-                                selectedCategory = category
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
-                    label = { Text("Price ($)") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                OutlinedTextField(
-                    value = unit,
-                    onValueChange = { unit = it },
-                    label = { Text("Unit (kg, pc)") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Description") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = {
-                    if (name.isBlank() || price.isBlank() || selectedCategory == null || imageUri == null) {
-                        Toast.makeText(context, "Please fill all fields and select an image", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    
-                    val inputStream = context.contentResolver.openInputStream(imageUri!!)
-                    val bytes = inputStream?.readBytes()
-                    val productDto = ProductDto(
-                        name = name,
-                        price = price.toDoubleOrNull() ?: 0.0,
-                        unit = unit,
-                        description = description,
-                        categoryId = selectedCategory?.id ?: "",
-                        storeId = userSession.getUserId() ?: "",
-                        storeName = userSession.getUserName(),
-                        isAvailable = true
+                    AddProductFormField(
+                        value = price,
+                        onValueChange = onPriceChange,
+                        label = "Price (PKR)",
+                        keyboardType = KeyboardType.Number,
+                        modifier = Modifier.weight(1f)
                     )
-                    
-                    viewModel.addProduct(productDto, bytes) {
-                        Toast.makeText(context, "Product Uploaded!", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = cartifyGreen),
-                enabled = !state.isOperationLoading
-            ) {
-                if (state.isOperationLoading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                } else {
-                    Text("UPLOAD PRODUCT", fontWeight = FontWeight.Bold)
+                    AddProductFormField(
+                        value = unit,
+                        onValueChange = onUnitChange,
+                        label = "Unit",
+                        placeholder = "e.g. kg, pc, pack",
+                        modifier = Modifier.weight(1f)
+                    )
                 }
+
+                // Description
+                AddProductFormField(
+                    value = description,
+                    onValueChange = onDescriptionChange,
+                    label = "Description",
+                    placeholder = "Tell customers about your product...",
+                    singleLine = false,
+                    minLines = 4
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
             }
-            
-            if (state.error != null) {
-                Text(text = state.error!!, color = Color.Red, fontSize = 12.sp)
+
+            // Bottom Action Area
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 16.dp,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                Box(modifier = Modifier.padding(24.dp).navigationBarsPadding()) {
+                    Button(
+                        onClick = onUploadClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = JapandiSage),
+                        enabled = !isLoading,
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text(
+                                text = "UPLOAD PRODUCT",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.2.sp
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ProductImagePicker(
+    imageUri: Uri?,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(160.dp)
+            .clickable { onClick() }
+            .shadow(1.dp, RoundedCornerShape(24.dp)),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, JapandiDivider)
+    ) {
+        if (imageUri != null) {
+            AsyncImage(
+                model = imageUri,
+                contentDescription = "Product Image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AddAPhoto,
+                    contentDescription = null,
+                    tint = JapandiSage,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Add Photo",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = JapandiSage
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryDropdown(
+    selectedCategory: Category?,
+    categories: List<Category>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onCategorySelect: (Category) -> Unit
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = selectedCategory?.name ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Category") },
+            placeholder = { Text("Select a category", color = JapandiEarthyGray) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = JapandiSage,
+                focusedLabelColor = JapandiSage,
+                unfocusedBorderColor = JapandiDivider,
+                cursorColor = JapandiSage,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.background(Color.White)
+        ) {
+            categories.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.name, style = MaterialTheme.typography.bodyMedium) },
+                    onClick = {
+                        onCategorySelect(category)
+                        onExpandedChange(false)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddProductFormField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String = "",
+    keyboardType: KeyboardType = KeyboardType.Text,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder, color = JapandiEarthyGray) },
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = JapandiSage,
+            focusedLabelColor = JapandiSage,
+            unfocusedBorderColor = JapandiDivider,
+            cursorColor = JapandiSage,
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        singleLine = singleLine,
+        minLines = minLines
+    )
+}
+
+@Preview(showBackground = true, name = "Add Product Form")
+@Composable
+fun PreviewAddProduct() {
+    val mockCategories = listOf(
+        Category("1", "Fruits"),
+        Category("2", "Vegetables"),
+        Category("3", "Dairy")
+    )
+    AddProductContent(
+        name = "",
+        price = "",
+        unit = "kg",
+        description = "",
+        selectedCategory = null,
+        categories = mockCategories,
+        imageUri = null,
+        onNameChange = {},
+        onPriceChange = {},
+        onUnitChange = {},
+        onDescriptionChange = {},
+        onCategorySelect = {},
+        onImagePickerClick = {},
+        onBackClick = {},
+        onUploadClick = {}
+    )
 }

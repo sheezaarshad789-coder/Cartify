@@ -1,40 +1,43 @@
 package com.example.cartify.data.network.repository
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BakeryDining
-import androidx.compose.material.icons.filled.Coffee
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Work
-import com.example.cartify.core.common.model.*
+import com.example.cartify.core.common.model.Address
+import com.example.cartify.core.common.model.CartItem
+import com.example.cartify.core.common.model.Category
+import com.example.cartify.core.common.model.Message
+import com.example.cartify.core.common.model.Product
+import com.example.cartify.core.common.model.Store
 import com.example.cartify.data.network.model.*
 import com.example.cartify.data.network.remote.SupabaseManager
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.realtime.PostgresAction
-import io.github.jan.supabase.realtime.channel
-import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.postgrest.query.filter.eq
+import io.github.jan.supabase.realtime.selectAsFlow
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map as flowMap
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
+import com.example.cartify.core.common.model.Order as DomainOrder
 
+/**
+ * Unified Supabase Repository for Cartify.
+ * Fixed for Supabase 2.5.0 compatibility and Domain model alignment.
+ */
 object SupabaseRepository {
 
     private val client = SupabaseManager.client
 
     fun getCurrentUserId(): String? = try {
         client.auth.currentUserOrNull()?.id
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 
-    // --- Auth ---
+    // --- Authentication ---
     suspend fun login(emailInput: String, passwordInput: String): Result<Unit> = runCatching {
         client.auth.signInWith(Email) {
             email = emailInput
@@ -53,37 +56,13 @@ object SupabaseRepository {
         }
     }
 
-    suspend fun logout(): Result<Unit> = runCatching {
-        client.auth.signOut()
-    }
-
-    // --- Common Data ---
+    // --- Data Fetching ---
     suspend fun fetchCategories(): Result<List<Category>> = runCatching {
-        val list = client.postgrest.from("categories").select().decodeList<CategoryDto>()
-        list.map { it.toCategory() }
+        client.postgrest.from("categories").select().decodeList<CategoryDto>().map { it.toCategory() }
     }
 
     suspend fun fetchStores(): Result<List<Store>> = runCatching {
-        val list = client.postgrest.from("stores").select().decodeList<StoreDto>()
-        list.map { it.toStore() }
-    }
-
-    suspend fun fetchStoreById(storeId: String): Result<Store> = runCatching {
-        client.postgrest.from("stores").select {
-            filter { eq("id", storeId) }
-        }.decodeSingle<StoreDto>().toStore()
-    }
-
-    suspend fun fetchStoreDetail(storeId: String): Result<Pair<Store, List<Product>>> = runCatching {
-        val storeDto = client.postgrest.from("stores").select {
-            filter { eq("id", storeId) }
-        }.decodeSingle<StoreDto>()
-
-        val productsList = client.postgrest.from("products").select {
-            filter { eq("store_id", storeId) }
-        }.decodeList<ProductDto>()
-
-        storeDto.toStore() to productsList.map { it.toProduct() }
+        client.postgrest.from("stores").select().decodeList<StoreDto>().map { it.toStore() }
     }
 
     suspend fun fetchProducts(): Result<List<Product>> = runCatching {
@@ -91,139 +70,84 @@ object SupabaseRepository {
         list.map { it.toProduct() }
     }
 
-    suspend fun fetchProductById(productId: String): Result<Product> = runCatching {
-        client.postgrest.from("products").select {
-            filter { eq("id", productId) }
-        }.decodeSingle<ProductDto>().toProduct()
-    }
-
-    suspend fun fetchProductsByCategory(categoryId: String): Result<List<Product>> = runCatching {
-        val list = client.postgrest.from("products").select {
-            filter { eq("category_id", categoryId) }
-        }.decodeList<ProductDto>()
-        list.map { it.toProduct() }
-    }
-
-    suspend fun searchProducts(query: String): Result<List<Product>> = runCatching {
-        val list = client.postgrest.from("products").select {
-            filter { ilike("name", "%$query%") }
-        }.decodeList<ProductDto>()
-        list.map { it.toProduct() }
-    }
-
-    suspend fun fetchFavoriteProducts(): Result<List<Product>> = runCatching {
-        val list = client.postgrest.from("products").select {
-            filter { eq("is_favorite", true) }
-        }.decodeList<ProductDto>()
-        list.map { it.toProduct() }
-    }
-
-    suspend fun toggleFavorite(productId: String, isFavorite: Boolean): Result<Unit> = runCatching {
-        client.postgrest.from("products").update(
-            buildJsonObject { put("is_favorite", !isFavorite) }
-        ) {
-            filter { eq("id", productId) }
-        }
-    }
-
-    // --- Checkout & Orders ---
-    suspend fun placeOrder(cartItems: List<CartItem>, totalAmount: Double, userId: String): Result<Order> = runCatching {
-        val storeName = cartItems.firstOrNull()?.product?.storeName ?: "Cartify"
-
-        val orderDto = OrderDto(
-            id = UUID.randomUUID().toString(),
-            storeName = storeName,
-            status = "Pending",
-            date = "Today",
-            totalAmount = totalAmount,
-            items = cartItems.map { CartItemDto(product = it.product.toDto(), quantity = it.quantity) },
-            customerName = client.auth.currentUserOrNull()?.userMetadata?.get("name")?.toString()?.removeSurrounding("\"") ?: "User"
-        )
-
-        client.postgrest.from("orders").insert(orderDto)
-        orderDto.toOrder()
-    }
-
-    suspend fun fetchOrders(): Result<List<Order>> = runCatching {
-        val userId = client.auth.currentUserOrNull()?.id
-        val list = client.postgrest.from("orders").select {
-            if (userId != null) {
-                filter { eq("user_id", userId) }
-            }
-        }.decodeList<OrderDto>()
-        list.map { it.toOrder() }
-    }
-
-    suspend fun fetchOrderById(orderId: String): Result<Order> = runCatching {
+    suspend fun fetchOrders(): Result<List<DomainOrder>> = runCatching {
+        val userId = getCurrentUserId() ?: return@runCatching emptyList<DomainOrder>()
         client.postgrest.from("orders").select {
-            filter { eq("id", orderId) }
-        }.decodeSingle<OrderDto>().toOrder()
+            filter { 
+                eq("user_id", userId) 
+            }
+        }.decodeList<OrderDto>().map { it.toOrder() }
     }
 
-    suspend fun fetchOrderTracking(orderId: String): Result<OrderTracking> = runCatching {
-        client.postgrest.from("order_tracking").select {
-            filter { eq("order_id", orderId) }
-        }.decodeSingle<OrderTrackingDto>().toOrderTracking()
-    }
-
-    // --- Addresses ---
     suspend fun fetchAddresses(): Result<List<Address>> = runCatching {
-        val list = client.postgrest.from("addresses").select().decodeList<AddressDto>()
-        list.map { it.toAddress() }
+        val userId = getCurrentUserId() ?: return@runCatching emptyList<Address>()
+        client.postgrest.from("addresses").select {
+            filter { 
+                eq("user_id", userId) 
+            }
+        }.decodeList<AddressDto>().map { it.toAddress() }
     }
 
-    // --- Notifications ---
-    suspend fun fetchNotifications(): Result<List<Notification>> = runCatching {
-        val list = client.postgrest.from("notifications").select().decodeList<NotificationDto>()
-        list.map { it.toNotification() }
-    }
-
-    // --- Messages ---
-    suspend fun fetchMessages(userId: String? = null): Result<List<Message>> = runCatching {
+    suspend fun fetchMessages(userId: String): Result<List<Message>> = runCatching {
         val list = client.postgrest.from("messages").select {
-            if (userId != null) {
-                filter { eq("user_id", userId) }
+            filter { 
+                eq("user_id", userId) 
             }
         }.decodeList<MessageDto>()
         list.map { it.toMessage() }
     }
 
-    // --- FAQs ---
-    suspend fun fetchFaqs(): Result<List<Faq>> = runCatching {
-        val list = client.postgrest.from("faqs").select().decodeList<FaqDto>()
-        list.map { Faq(it.id, it.question, it.answer) }
-    }
+    // --- Vendor Specific ---
 
-    // --- Vendor Core ---
     suspend fun fetchVendorStats(vendorId: String): Result<VendorStatsDto> = runCatching {
-        val orders = client.postgrest.from("orders")
-            .select { filter { eq("vendor_id", vendorId) } }
-            .decodeList<OrderDto>()
-
-        val totalSalesValue = orders.filter { it.status == "Delivered" }.sumOf { it.totalAmount }
-        val activeCount = orders.count { it.status != "Delivered" && it.status != "Cancelled" }
-
-        val products = client.postgrest.from("products")
-            .select { filter { eq("store_id", vendorId) } }
-            .decodeList<ProductDto>()
-
-        VendorStatsDto(totalSalesValue, activeCount, products.size)
+        val productsResult = client.postgrest.from("products").select {
+            filter { eq("store_id", vendorId) }
+        }.decodeList<ProductDto>()
+        
+        val ordersResult = client.postgrest.from("orders").select {
+            filter { eq("vendor_id", vendorId) }
+        }.decodeList<OrderDto>()
+        
+        val totalSales = ordersResult.filter { it.status.lowercase() == "completed" }.sumOf { it.totalAmount }
+        val activeOrders = ordersResult.count { it.status.lowercase() != "completed" && it.status.lowercase() != "cancelled" }
+        
+        VendorStatsDto(
+            totalSales = totalSales,
+            activeOrders = activeOrders,
+            totalProducts = productsResult.size
+        )
     }
 
-    fun observeVendorOrders(vendorId: String): Flow<List<Order>> {
-        val myChannel = client.channel("vendor_orders_realtime")
-        return myChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
-            table = "orders"
-        }.flowMap {
-            fetchVendorOrders(vendorId).getOrDefault(emptyList())
-        }
+    suspend fun fetchVendorOrders(vendorId: String): Result<List<DomainOrder>> = runCatching {
+        client.postgrest.from("orders").select {
+            filter { eq("vendor_id", vendorId) }
+        }.decodeList<OrderDto>().map { it.toOrder() }
     }
 
-    suspend fun fetchVendorOrders(vendorId: String): Result<List<Order>> = runCatching {
-        val list = client.postgrest.from("orders")
-            .select { filter { eq("vendor_id", vendorId) } }
-            .decodeList<OrderDto>()
-        list.map { it.toOrder() }
+    suspend fun fetchStoreById(storeId: String): Result<Store> = runCatching {
+        client.postgrest.from("stores").select {
+            filter {
+                or {
+                    eq("id", storeId)
+                    eq("user_id", storeId)
+                }
+            }
+        }.decodeSingle<StoreDto>().toStore()
+    }
+
+    suspend fun fetchVendorProducts(vendorId: String): Result<List<Product>> = runCatching {
+        client.postgrest.from("products").select {
+            filter { eq("store_id", vendorId) }
+        }.decodeList<ProductDto>().map { it.toProduct() }
+    }
+
+    fun observeVendorOrders(vendorId: String): Flow<List<DomainOrder>> {
+        return client.postgrest.from("orders").selectAsFlow<OrderDto>(
+            primaryKey = OrderDto::id,
+            filter = {
+                eq("vendor_id", vendorId)
+            }
+        ).map { list -> list.map { it.toOrder() } }
     }
 
     suspend fun updateOrderStatus(orderId: String, newStatus: String): Result<Unit> = runCatching {
@@ -234,43 +158,48 @@ object SupabaseRepository {
         }
     }
 
-    // --- Product Management ---
-    suspend fun fetchVendorProducts(vendorId: String): Result<List<Product>> = runCatching {
-        val list = client.postgrest.from("products").select {
-            filter { eq("store_id", vendorId) }
-        }.decodeList<ProductDto>()
-        list.map { it.toProduct() }
-    }
-
     suspend fun addProduct(product: ProductDto, imageBytes: ByteArray?): Result<Unit> = runCatching {
-        var finalImageUrl = "https://via.placeholder.com/150"
+        var finalProduct = product
         if (imageBytes != null) {
-            val fileName = "products/${UUID.randomUUID()}.jpg"
-            val bucket = client.storage.from("product-images")
+            val fileName = "${UUID.randomUUID()}.jpg"
+            val bucket = client.storage.from("products")
             bucket.upload(fileName, imageBytes)
-            finalImageUrl = bucket.publicUrl(fileName)
+            val publicUrl = bucket.publicUrl(fileName)
+            finalProduct = product.copy(imageUrl = publicUrl)
         }
-        val productWithImage = product.copy(imageUrl = finalImageUrl)
-        client.postgrest.from("products").insert(productWithImage)
+        client.postgrest.from("products").insert(finalProduct)
     }
 
     suspend fun updateProduct(product: ProductDto, imageBytes: ByteArray?): Result<Unit> = runCatching {
-        var finalImageUrl = product.imageUrl
+        var finalProduct = product
         if (imageBytes != null) {
-            val fileName = "products/${UUID.randomUUID()}.jpg"
-            val bucket = client.storage.from("product-images")
+            val fileName = "${UUID.randomUUID()}.jpg"
+            val bucket = client.storage.from("products")
             bucket.upload(fileName, imageBytes)
-            finalImageUrl = bucket.publicUrl(fileName)
+            val publicUrl = bucket.publicUrl(fileName)
+            finalProduct = product.copy(imageUrl = publicUrl)
         }
-        val productToUpdate = product.copy(imageUrl = finalImageUrl)
-        client.postgrest.from("products").update(productToUpdate) {
+        client.postgrest.from("products").update(finalProduct) {
             filter { eq("id", product.id ?: "") }
         }
     }
 
-    suspend fun deleteProduct(productId: String): Result<Unit> = runCatching {
-        client.postgrest.from("products").delete {
-            filter { eq("id", productId) }
+    suspend fun updateStore(storeDto: StoreDto, logoBytes: ByteArray?, bannerBytes: ByteArray?): Result<Unit> = runCatching {
+        var finalStore = storeDto
+        if (logoBytes != null) {
+            val fileName = "logo_${UUID.randomUUID()}.jpg"
+            val bucket = client.storage.from("stores")
+            bucket.upload(fileName, logoBytes)
+            finalStore = finalStore.copy(imageUrl = bucket.publicUrl(fileName))
+        }
+        if (bannerBytes != null) {
+            val fileName = "banner_${UUID.randomUUID()}.jpg"
+            val bucket = client.storage.from("stores")
+            bucket.upload(fileName, bannerBytes)
+            finalStore = finalStore.copy(bannerUrl = bucket.publicUrl(fileName))
+        }
+        client.postgrest.from("stores").update(finalStore) {
+            filter { eq("id", storeDto.id ?: "") }
         }
     }
 
@@ -282,168 +211,40 @@ object SupabaseRepository {
         }
     }
 
-    // --- Store Management ---
-    suspend fun updateStore(storeDto: StoreDto, logoBytes: ByteArray?, bannerBytes: ByteArray?): Result<Unit> = runCatching {
-        var finalLogoUrl = storeDto.imageUrl
-        var finalBannerUrl = storeDto.bannerUrl
-
-        if (logoBytes != null) {
-            val fileName = "stores/logo_${UUID.randomUUID()}.jpg"
-            val bucket = client.storage.from("store-assets")
-            bucket.upload(fileName, logoBytes)
-            finalLogoUrl = bucket.publicUrl(fileName)
+    suspend fun deleteProduct(productId: String): Result<Unit> = runCatching {
+        client.postgrest.from("products").delete {
+            filter { eq("id", productId) }
         }
-
-        if (bannerBytes != null) {
-            val fileName = "stores/banner_${UUID.randomUUID()}.jpg"
-            val bucket = client.storage.from("store-assets")
-            bucket.upload(fileName, bannerBytes)
-            finalBannerUrl = bucket.publicUrl(fileName)
-        }
-
-        client.postgrest.from("stores").update(
-            buildJsonObject {
-                put("name", storeDto.name)
-                put("image_url", finalLogoUrl)
-                put("banner_url", finalBannerUrl)
-                put("description", storeDto.description)
-                put("address", storeDto.address)
-                put("delivery_time", storeDto.deliveryTime)
-            }
-        ) {
-            filter { eq("id", storeDto.id ?: "") }
-        }
-    }
-
-    suspend fun fetchChatMessages(userId: String, otherId: String): Result<List<Message>> = runCatching {
-        val list = client.postgrest.from("messages").select {
-            filter {
-                or {
-                    eq("user_id", userId)
-                    eq("receiver_id", userId)
-                }
-            }
-        }.decodeList<MessageDto>()
-        list.map { it.toMessage() }
-    }
-
-    suspend fun sendMessage(senderId: String, receiverId: String, senderName: String, messageText: String): Result<Unit> = runCatching {
-        val dto = MessageDto(
-            id = UUID.randomUUID().toString(),
-            senderName = senderName,
-            lastMessage = messageText,
-            time = "Now",
-            isMe = true
-        )
-        client.postgrest.from("messages").insert(dto)
     }
 
     // --- Mappers ---
-    private fun OrderDto.toOrder(): Order = Order(
-        id = id,
-        storeName = storeName,
-        status = status,
-        date = date,
-        totalAmount = totalAmount,
-        items = items.map { it.toCartItem() },
-        customerName = customerName ?: "Guest",
-        customerAddress = customerAddress ?: "Main Street, City"
+    private fun CategoryDto.toCategory() = Category(id = id ?: "", name = name ?: "Grocery", icon = Icons.Default.ShoppingCart)
+    
+    private fun StoreDto.toStore() = Store(
+        id = id ?: "", name = name ?: "Store", rating = rating ?: 4.5, 
+        distance = distance ?: "1km", imageUrl = imageUrl ?: "", 
+        bannerUrl = bannerUrl ?: "", description = description ?: "", address = address ?: ""
     )
 
-    private fun CartItemDto.toCartItem(): CartItem = CartItem(
-        product = product?.toProduct() ?: Product("", "Product", 0.0, "", "https://via.placeholder.com/150", "", "", "", ""),
+    private fun ProductDto.toProduct() = Product(
+        id = id ?: productId ?: "", name = name ?: "Product", price = price ?: 0.0, 
+        unit = unit ?: "kg", imageUrl = imageUrl ?: "", description = description ?: "", 
+        storeId = storeId ?: "", storeName = storeName ?: "", categoryId = categoryId ?: ""
+    )
+
+    private fun OrderDto.toOrder(): DomainOrder = DomainOrder(
+        id = id, storeName = storeName, status = status, date = date, 
+        totalAmount = totalAmount, items = items.map { it.toCartItem() }, 
+        customerName = customerName ?: "Guest", customerAddress = customerAddress ?: "No Address"
+    )
+
+    private fun CartItemDto.toCartItem() = CartItem(
+        product = product?.toProduct() ?: Product(productId, "Product", 0.0, "kg", "", "", "", "", ""),
         quantity = quantity
     )
 
-    private fun ProductDto.toProduct(): Product = Product(
-        id = id ?: productId ?: "",
-        name = name ?: nameCaps ?: productName ?: "Product",
-        price = price ?: 0.0,
-        unit = unit ?: "unit",
-        imageUrl = imageUrl ?: "https://via.placeholder.com/150",
-        description = description ?: "",
-        storeId = storeId ?: "",
-        storeName = storeName ?: "Local Store",
-        categoryId = categoryId ?: "",
-        isFavorite = isFavorite,
-        isAvailable = isAvailable
-    )
+    private fun AddressDto.toAddress() = Address(id = id, title = title, fullAddress = fullAddress, isDefault = isDefault)
 
-    private fun Product.toDto(): ProductDto = ProductDto(
-        id = id,
-        name = name,
-        price = price,
-        unit = unit,
-        description = description,
-        imageUrl = imageUrl,
-        storeId = storeId,
-        storeName = storeName,
-        categoryId = categoryId,
-        isFavorite = isFavorite,
-        isAvailable = isAvailable
-    )
+    private fun MessageDto.toMessage() = Message(id = id, senderName = senderName, lastMessage = lastMessage, time = time, isMe = isMe)
 
-    private fun StoreDto.toStore(): Store = Store(
-        id = id ?: storeId ?: "",
-        name = name ?: nameCaps ?: storeName ?: "Store",
-        rating = rating ?: ratingCaps ?: 0.0,
-        distance = distance ?: "0.0 km",
-        imageUrl = imageUrl ?: "https://via.placeholder.com/150",
-        bannerUrl = bannerUrl ?: "https://via.placeholder.com/400x200",
-        description = description ?: "",
-        address = address ?: "",
-        deliveryTime = deliveryTime ?: "20-30 mins",
-        isFavorite = isFavorite
-    )
-
-    private fun AddressDto.toAddress(): Address = Address(
-        id = id,
-        title = title,
-        fullAddress = fullAddress,
-        isDefault = isDefault,
-        icon = Icons.Default.Work
-    )
-
-    private fun NotificationDto.toNotification(): Notification = Notification(
-        id = id,
-        title = title,
-        message = message,
-        time = time,
-        type = type
-    )
-
-    private fun OrderTrackingDto.toOrderTracking(): OrderTracking = OrderTracking(
-        orderId = orderId,
-        status = status,
-        estimatedTime = estimatedTime,
-        statusHistory = statusHistory.map { it.toTrackingStep() }
-    )
-
-    private fun TrackingStepDto.toTrackingStep(): TrackingStep = TrackingStep(
-        status = status,
-        time = time,
-        isCompleted = isCompleted
-    )
-
-    private fun MessageDto.toMessage(): Message = Message(
-        id = id,
-        senderName = senderName,
-        lastMessage = lastMessage,
-        time = time,
-        isMe = isMe
-    )
-
-    private fun CategoryDto.toCategory(): Category {
-        val nameToUse = name ?: nameCaps ?: categoryName ?: title ?: titleCaps ?: "Category"
-        val icon = when (nameToUse.lowercase()) {
-            "fruits" -> Icons.Default.ShoppingCart
-            "vegetables" -> Icons.Default.Menu
-            "dairy" -> Icons.Default.Coffee
-            "bakery" -> Icons.Default.BakeryDining
-            "meat" -> Icons.Default.Restaurant
-            "snacks" -> Icons.Default.Fastfood
-            else -> Icons.Default.ShoppingCart
-        }
-        return Category(id = id ?: categoryId ?: "", name = nameToUse, icon = icon)
-    }
 }

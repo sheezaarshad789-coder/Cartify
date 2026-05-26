@@ -72,8 +72,10 @@ dependencies {
     implementation(libs.supabase.auth)
     implementation(libs.supabase.realtime)
     implementation(libs.supabase.storage)
-    implementation(libs.kotlinx.serialization.json)
+    
+    // Ktor & Serialization
     implementation(libs.ktor.client.android)
+    implementation(libs.kotlinx.serialization.json)
     
     // Coil for Image Loading
     implementation(libs.coil.compose)

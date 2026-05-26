@@ -1,6 +1,5 @@
 package com.example.cartify.feature.customer.screens.checkout
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,207 +14,321 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.cartify.data.network.repository.SupabaseRepository
-import com.example.cartify.feature.customer.CartViewModel
-import com.example.cartify.feature.customer.CheckoutState
-import com.example.cartify.feature.customer.CheckoutViewModel
+import com.example.cartify.core.common.model.CartItem
+import com.example.cartify.core.common.model.Product
+import com.example.cartify.core.common.theme.*
 import java.util.Locale
 
+/**
+ * Checkout Content - Decoupled UI layer for the checkout process.
+ * Focuses on clarity, minimalist layout, and Japandi aesthetic.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CheckoutScreen(
-    navController: NavController, 
-    checkoutViewModel: CheckoutViewModel = viewModel(),
-    cartViewModel: CartViewModel = viewModel()
+fun CheckoutContent(
+    cartItems: List<CartItem>,
+    totalAmount: Double,
+    deliveryFee: Double = 50.0,
+    selectedPaymentMethod: String = "Cash",
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    onBackClick: () -> Unit,
+    onChangeAddressClick: () -> Unit,
+    onPaymentMethodSelect: (String) -> Unit,
+    onPlaceOrderClick: () -> Unit
 ) {
-    var selectedPayment by remember { mutableStateOf("Cash") }
-    val cartItems = cartViewModel.cartItems
-    val total by cartViewModel.totalPrice
-    val cartifyGreen = MaterialTheme.colorScheme.primary
-    val context = LocalContext.current
-    val checkoutState by checkoutViewModel.checkoutState
-    
-    val userId = remember { SupabaseRepository.getCurrentUserId() ?: "" }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        "Checkout", 
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) 
+                        text = "Checkout",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = cartifyGreen)
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .background(Color.White)
-                    .padding(16.dp),
-                color = Color.White
-            ) {
-                Button(
-                    onClick = { 
-                        if (userId.isNotEmpty()) {
-                            checkoutViewModel.placeOrder(cartItems, total + 50.0, userId) {
-                                cartViewModel.clearCart()
-                                Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_LONG).show()
-                                navController.navigate("main") {
-                                    popUpTo("main") { inclusive = true }
-                                }
-                            }
-                        } else {
-                            Toast.makeText(context, "Please login to place order", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = cartifyGreen),
-                    enabled = checkoutState !is CheckoutState.Loading && cartItems.isNotEmpty()
-                ) {
-                    if (checkoutState is CheckoutState.Loading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text(text = "Place Order", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+            CheckoutBottomBar(
+                isEnabled = cartItems.isNotEmpty() && !isLoading,
+                isLoading = isLoading,
+                onPlaceOrderClick = onPlaceOrderClick
+            )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = JapandiCanvas
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
-            // Delivery Address
-            Text(text = "Delivery Address", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = cartifyGreen)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(text = "Home", fontWeight = FontWeight.Bold)
-                        Text(text = "123 Street Name, City, Country", color = Color.Gray, fontSize = 14.sp)
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    TextButton(onClick = { }) {
-                        Text("Change", color = cartifyGreen)
-                    }
-                }
-            }
-
-            // Payment Methods
-            Text(text = "Payment Method", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp))
-            val paymentOptions = listOf("Cash", "EasyPaisa", "JazzCash")
-            paymentOptions.forEach { option ->
-                PaymentOptionRow(
-                    title = option,
-                    isSelected = selectedPayment == option,
-                    onSelect = { selectedPayment = option },
-                    cartifyGreen = cartifyGreen
-                )
-            }
-
-            // Order Summary
-            Text(text = "Order Summary", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 24.dp))
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    cartItems.forEach { item ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(text = item.quantity.toString() + "x " + item.product.name, color = Color.Gray)
-                            Text(text = "PKR " + String.format(Locale.getDefault(), "%.2f", item.product.price * item.quantity))
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.3f))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(text = "Delivery Fee", color = Color.Gray)
-                        Text(text = "PKR 50.00")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(text = "Total", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text(
-                            text = "PKR " + String.format(Locale.getDefault(), "%.2f", total + 50.0),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = cartifyGreen
-                        )
-                    }
-                }
-            }
-
-            if (checkoutState is CheckoutState.Error) {
-                Text(
-                    text = (checkoutState as CheckoutState.Error).message, 
-                    color = Color.Red, 
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
+            // Delivery Address Section
+            SectionHeader(title = "Delivery Address")
+            AddressCard(
+                addressTitle = "Home",
+                addressDetail = "123 Japandi Lane, Serenity Heights, Karachi",
+                onEditClick = onChangeAddressClick
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // Payment Methods Section
+            SectionHeader(title = "Payment Method")
+            PaymentMethodsList(
+                selectedMethod = selectedPaymentMethod,
+                onMethodSelect = onPaymentMethodSelect
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Order Summary Section
+            SectionHeader(title = "Order Summary")
+            OrderSummaryCard(
+                items = cartItems,
+                deliveryFee = deliveryFee,
+                total = totalAmount
+            )
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = JapandiError,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 16.dp, start = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
 
 @Composable
-fun PaymentOptionRow(title: String, isSelected: Boolean, onSelect: () -> Unit, cartifyGreen: Color) {
-    Row(
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium.copy(
+            fontWeight = FontWeight.ExtraBold,
+            color = JapandiCharcoal
+        ),
+        modifier = Modifier.padding(bottom = 12.dp)
+    )
+}
+
+@Composable
+private fun AddressCard(
+    addressTitle: String,
+    addressDetail: String,
+    onEditClick: () -> Unit
+) {
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .border(
-                width = 1.dp,
-                color = if (isSelected) cartifyGreen else Color.Gray.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .clickable(onClick = onSelect)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(
-            selected = isSelected, 
-            onClick = onSelect,
-            colors = RadioButtonDefaults.colors(selectedColor = cartifyGreen)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(text = title, fontWeight = FontWeight.Medium)
+            .shadow(1.dp, RoundedCornerShape(16.dp)),
+        color = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(JapandiSage.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.LocationOn, contentDescription = null, tint = JapandiSage)
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = addressTitle, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                Text(text = addressDetail, style = MaterialTheme.typography.bodySmall, color = JapandiEarthyGray)
+            }
+            TextButton(onClick = onEditClick) {
+                Text("Change", color = JapandiSage, fontWeight = FontWeight.Bold)
+            }
+        }
     }
+}
+
+@Composable
+private fun PaymentMethodsList(
+    selectedMethod: String,
+    onMethodSelect: (String) -> Unit
+) {
+    val options = listOf("Cash", "EasyPaisa", "JazzCash")
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        options.forEach { option ->
+            val isSelected = selectedMethod == option
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onMethodSelect(option) },
+                shape = RoundedCornerShape(14.dp),
+                color = if (isSelected) JapandiSage.copy(alpha = 0.05f) else Color.White,
+                border = androidx.compose.foundation.BorderStroke(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) JapandiSage else JapandiDivider
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = { onMethodSelect(option) },
+                        colors = RadioButtonDefaults.colors(selectedColor = JapandiSage)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = option,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        ),
+                        color = if (isSelected) JapandiCharcoal else JapandiEarthyGray
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrderSummaryCard(
+    items: List<CartItem>,
+    deliveryFee: Double,
+    total: Double
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(1.dp, RoundedCornerShape(16.dp)),
+        color = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            items.forEach { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "${item.quantity}x ${item.product.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = JapandiEarthyGray
+                    )
+                    Text(
+                        text = "PKR ${String.format(Locale.getDefault(), "%.0f", item.product.price * item.quantity)}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
+                    )
+                }
+            }
+            
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = JapandiDivider.copy(alpha = 0.5f)
+            )
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(text = "Delivery Fee", style = MaterialTheme.typography.bodyMedium, color = JapandiEarthyGray)
+                Text(text = "PKR ${String.format(Locale.getDefault(), "%.0f", deliveryFee)}", style = MaterialTheme.typography.bodyMedium)
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Total Amount", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Text(
+                    text = "PKR ${String.format(Locale.getDefault(), "%.0f", total + deliveryFee)}",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Black,
+                        color = JapandiSage
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CheckoutBottomBar(
+    isEnabled: Boolean,
+    isLoading: Boolean,
+    onPlaceOrderClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 16.dp,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Box(modifier = Modifier.padding(24.dp).navigationBarsPadding()) {
+            Button(
+                onClick = onPlaceOrderClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = JapandiSage),
+                enabled = isEnabled,
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        text = "PLACE ORDER",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Checkout - Standard")
+@Composable
+fun PreviewCheckoutContent() {
+    val mockItems = listOf(
+        CartItem(Product("1", "Fresh Avocado", 450.0, "kg", "", "", "", "", ""), 2),
+        CartItem(Product("2", "Artisan Sourdough", 600.0, "loaf", "", "", "", "", ""), 1)
+    )
+    CheckoutContent(
+        cartItems = mockItems,
+        totalAmount = 1500.0,
+        onBackClick = {},
+        onChangeAddressClick = {},
+        onPaymentMethodSelect = {},
+        onPlaceOrderClick = {}
+    )
 }

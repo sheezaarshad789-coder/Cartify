@@ -3,6 +3,7 @@ package com.example.cartify.data.network.remote
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.user.UserSession
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
@@ -24,14 +25,11 @@ object SupabaseManager {
 
     /**
      * Restores the session using the saved session JSON string.
-     * In Supabase Kotlin 2.x, importSession usually takes a UserSession object.
-     * If a string is provided, it should be the serialized UserSession.
      */
     suspend fun restoreSession(sessionJson: String) {
+        if (sessionJson.isBlank()) return
         try {
-            // Attempt to deserialize the string into a UserSession object
-            // This assumes the saved string is a full JSON representation of the session
-            val session = Json.decodeFromString<io.github.jan.supabase.gotrue.user.UserSession>(sessionJson)
+            val session = Json.decodeFromString<UserSession>(sessionJson)
             client.auth.importSession(session)
         } catch (e: Exception) {
             e.printStackTrace()

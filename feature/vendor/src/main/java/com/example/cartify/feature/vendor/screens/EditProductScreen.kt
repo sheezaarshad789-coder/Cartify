@@ -1,9 +1,6 @@
 package com.example.cartify.feature.vendor.screens
 
 import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,247 +18,322 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.cartify.core.common.model.Category
-import com.example.cartify.data.network.model.ProductDto
-import com.example.cartify.data.network.repository.SupabaseRepository
-import com.example.cartify.feature.vendor.VendorViewModel
+import com.example.cartify.core.common.model.Product
+import com.example.cartify.core.common.theme.*
 
+/**
+ * Edit Product Content - Decoupled UI layer for vendors to modify existing items.
+ * Strictly follows Japandi design principles for a premium, minimalist experience.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditProductScreen(navController: NavController, productId: String?, viewModel: VendorViewModel = viewModel()) {
-    val context = LocalContext.current
-    val cartifyGreen = MaterialTheme.colorScheme.primary
-    val state by viewModel.state
-    
-    val product = state.products.find { it.id == productId }
-
-    var name by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    
-    var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
-    var selectedCategory by remember { mutableStateOf<Category?>(null) }
+fun EditProductContent(
+    product: Product?,
+    name: String,
+    price: String,
+    unit: String,
+    description: String,
+    selectedCategory: Category?,
+    categories: List<Category>,
+    newImageUri: Uri?,
+    isLoading: Boolean = false,
+    onNameChange: (String) -> Unit,
+    onPriceChange: (String) -> Unit,
+    onUnitChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onCategorySelect: (Category) -> Unit,
+    onImagePickerClick: () -> Unit,
+    onBackClick: () -> Unit,
+    onSaveClick: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
-    
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-
-    LaunchedEffect(product) {
-        product?.let {
-            name = it.name
-            price = it.price.toString()
-            unit = it.unit
-            description = it.description
-        }
-    }
-
-    LaunchedEffect(product, categories) {
-        if (categories.isEmpty()) {
-            SupabaseRepository.fetchCategories().onSuccess { fetchedCategories ->
-                categories = fetchedCategories
-                if (selectedCategory == null) {
-                    selectedCategory = fetchedCategories.find { it.id == product?.categoryId }
-                }
-            }
-        } else if (selectedCategory == null) {
-            selectedCategory = categories.find { it.id == product?.categoryId }
-        }
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        imageUri = uri
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        text = "Edit Product Details", 
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) 
+                        text = "Edit Details",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
-        containerColor = Color.White
+        containerColor = JapandiCanvas
     ) { paddingValues ->
-        if (product == null) {
+        if (product == null && !isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = cartifyGreen)
+                Text("Product not found", color = JapandiEarthyGray)
             }
         } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
-                        .size(150.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFF0F0F0))
-                        .border(BorderStroke(1.dp, Color.LightGray), RoundedCornerShape(16.dp))
-                        .clickable { launcher.launch("image/*") },
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
+                        .padding(horizontal = 24.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    AsyncImage(
-                        model = imageUri ?: product.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Color.White)
-                            Text("Change Photo", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Product Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = selectedCategory?.name ?: "Select Category",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    // Image Section
+                    EditImageSection(
+                        currentImageUrl = product?.imageUrl ?: "",
+                        newImageUri = newImageUri,
+                        onClick = onImagePickerClick
                     )
-                    ExposedDropdownMenu(
+
+                    // Form Fields
+                    EditProductFormField(
+                        value = name,
+                        onValueChange = onNameChange,
+                        label = "Product Name"
+                    )
+
+                    CategoryDropdown(
+                        selectedCategory = selectedCategory,
+                        categories = categories,
                         expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        onExpandedChange = { expanded = it },
+                        onCategorySelect = onCategorySelect
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.name) },
-                                onClick = {
-                                    selectedCategory = category
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = price,
-                        onValueChange = { price = it },
-                        label = { Text("Price ($)") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = unit,
-                        onValueChange = { unit = it },
-                        label = { Text("Unit (e.g. kg)") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = {
-                        if (name.isBlank() || price.isBlank() || selectedCategory == null) {
-                            Toast.makeText(context, "Fields cannot be empty", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        
-                        val bytes = imageUri?.let { context.contentResolver.openInputStream(it)?.readBytes() }
-                        
-                        val productDto = ProductDto(
-                            id = product.id,
-                            name = name,
-                            price = price.toDoubleOrNull() ?: 0.0,
-                            unit = unit,
-                            description = description,
-                            categoryId = selectedCategory?.id ?: "",
-                            storeId = product.storeId,
-                            storeName = product.storeName,
-                            imageUrl = product.imageUrl,
-                            isAvailable = product.isAvailable
+                        EditProductFormField(
+                            value = price,
+                            onValueChange = onPriceChange,
+                            label = "Price (PKR)",
+                            keyboardType = KeyboardType.Number,
+                            modifier = Modifier.weight(1f)
                         )
-
-                        viewModel.updateProduct(productDto, bytes) {
-                            Toast.makeText(context, "Changes Saved Successfully!", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = cartifyGreen),
-                    enabled = !state.isOperationLoading
-                ) {
-                    if (state.isOperationLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("SAVE CHANGES", fontWeight = FontWeight.Bold)
+                        EditProductFormField(
+                            value = unit,
+                            onValueChange = onUnitChange,
+                            label = "Unit",
+                            modifier = Modifier.weight(1f)
+                        )
                     }
+
+                    EditProductFormField(
+                        value = description,
+                        onValueChange = onDescriptionChange,
+                        label = "Description",
+                        singleLine = false,
+                        minLines = 4
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
-                
-                if (state.error != null) {
-                    Text(text = state.error!!, color = Color.Red, fontSize = 12.sp)
+
+                // Bottom Action Button
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    shadowElevation = 16.dp,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                ) {
+                    Box(modifier = Modifier.padding(24.dp).navigationBarsPadding()) {
+                        Button(
+                            onClick = onSaveClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = JapandiSage),
+                            enabled = !isLoading,
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "SAVE CHANGES",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.2.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun EditImageSection(
+    currentImageUrl: String,
+    newImageUri: Uri?,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(160.dp)
+            .clickable { onClick() }
+            .shadow(1.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White)
+            .border(BorderStroke(1.dp, JapandiDivider), RoundedCornerShape(24.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        AsyncImage(
+            model = newImageUri ?: currentImageUrl,
+            contentDescription = "Product Image",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.Black.copy(alpha = 0.25f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "CHANGE",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryDropdown(
+    selectedCategory: Category?,
+    categories: List<Category>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onCategorySelect: (Category) -> Unit
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = selectedCategory?.name ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Category") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = JapandiSage,
+                focusedLabelColor = JapandiSage,
+                unfocusedBorderColor = JapandiDivider,
+                cursorColor = JapandiSage,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.background(Color.White)
+        ) {
+            categories.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.name, style = MaterialTheme.typography.bodyMedium) },
+                    onClick = {
+                        onCategorySelect(category)
+                        onExpandedChange(false)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditProductFormField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = JapandiSage,
+            focusedLabelColor = JapandiSage,
+            unfocusedBorderColor = JapandiDivider,
+            cursorColor = JapandiSage,
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        singleLine = singleLine,
+        minLines = minLines
+    )
+}
+
+@Preview(showBackground = true, name = "Edit Product - Mock Data")
+@Composable
+fun PreviewEditProduct() {
+    val mockProduct = Product("1", "Organic Avocado", 450.0, "kg", "", "Creamy hass avocados.", "101", "Green Mart", "cat_1")
+    val mockCategories = listOf(Category("cat_1", "Fruits"), Category("cat_2", "Vegetables"))
+    
+    EditProductContent(
+        product = mockProduct,
+        name = "Organic Avocado",
+        price = "450",
+        unit = "kg",
+        description = "Creamy hass avocados sourced from local farms.",
+        selectedCategory = mockCategories[0],
+        categories = mockCategories,
+        newImageUri = null,
+        onNameChange = {},
+        onPriceChange = {},
+        onUnitChange = {},
+        onDescriptionChange = {},
+        onCategorySelect = {},
+        onImagePickerClick = {},
+        onBackClick = {},
+        onSaveClick = {}
+    )
 }

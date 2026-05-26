@@ -1,8 +1,5 @@
 package com.example.cartify.feature.customer.screens
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,93 +15,61 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.cartify.core.common.navigation.Screen
 import com.example.cartify.core.common.theme.*
-import com.example.cartify.feature.customer.ProfileViewModel
 
+/**
+ * Profile Content - Decoupled UI layer for user profile and settings.
+ * Uses State Hoisting for all interactions and mock data for previews.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(
-    navController: NavController,
-    rootNavController: NavController,
-    viewModel: ProfileViewModel = viewModel()
+fun ProfileContent(
+    userName: String,
+    userEmail: String,
+    isVendorMode: Boolean,
+    profileImageUri: String? = null,
+    selectedLanguage: String = "English (US)",
+    onBackClick: () -> Unit,
+    onImagePickerClick: () -> Unit,
+    onToggleVendorMode: () -> Unit,
+    onSavedAddressesClick: () -> Unit,
+    onWishlistClick: () -> Unit,
+    onOrderHistoryClick: () -> Unit,
+    onStoreSettingsClick: () -> Unit,
+    onInventoryClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    onLanguageClick: () -> Unit,
+    onHelpCenterClick: () -> Unit,
+    onLogoutClick: () -> Unit
 ) {
-    val userName by viewModel.userName
-    val userEmail by viewModel.userEmail
-    val isVendorMode by viewModel.isVendorMode
-    val profileImageUri by viewModel.profileImageUri
-
-    var showLanguageSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
-    var selectedLanguage by remember { mutableStateOf("English (US)") }
-
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.updateProfileImage(it.toString()) }
-    }
-
-    if (showLanguageSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showLanguageSheet = false },
-            sheetState = sheetState,
-            containerColor = Color.White
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Select Language",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = JapandiCharcoal)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                LanguageOption("English", selectedLanguage == "English") {
-                    selectedLanguage = "English"
-                    showLanguageSheet = false
-                }
-                LanguageOption("Urdu", selectedLanguage == "Urdu") {
-                    selectedLanguage = "Urdu"
-                    showLanguageSheet = false
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "Profile",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold, color = JapandiCharcoal),
-                        modifier = Modifier.padding(start = 8.dp)
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
-                    }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = JapandiCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas),
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = JapandiCanvas)
             )
         },
         containerColor = JapandiCanvas
@@ -115,166 +80,223 @@ fun ProfileScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Professional Profile Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(JapandiSage)
-                    .padding(top = 16.dp, bottom = 24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(contentAlignment = Alignment.BottomEnd) {
-                        Box(
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f))
-                                .clickable { imagePickerLauncher.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (profileImageUri != null) {
-                                AsyncImage(
-                                    model = profileImageUri,
-                                    contentDescription = "Profile Image",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Text("👤", fontSize = 48.sp)
-                            }
-                        }
-                        
-                        // Edit Icon
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                                .clickable { imagePickerLauncher.launch("image/*") }
-                                .padding(4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CameraAlt,
-                                contentDescription = "Change DP",
-                                tint = JapandiSage,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = userName,
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Text(text = userEmail, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
-                }
-            }
+            // Profile Header
+            ProfileHeader(
+                name = userName,
+                email = userEmail,
+                imageUri = profileImageUri,
+                onEditImageClick = onImagePickerClick
+            )
 
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                // Switch Mode Logic
+            Column(modifier = Modifier.padding(24.dp)) {
+                // Mode Switcher
                 VendorSwitchCard(
                     isVendorMode = isVendorMode,
-                    onSwitch = {
-                        viewModel.toggleVendorMode()
-                        val targetRoute = if (!isVendorMode) Screen.VendorDashboard.route else Screen.Home.route
-                        navController.navigate(targetRoute) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    }
+                    onSwitch = onToggleVendorMode
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
-                    text = if (isVendorMode) "Vendor Settings" else "Account Settings",
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 15.sp,
-                    color = JapandiCharcoal,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    text = if (isVendorMode) "Vendor Management" else "Account Settings",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        color = JapandiCharcoal
+                    ),
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
                 if (isVendorMode) {
-                    ProfileOptionCard(icon = Icons.Default.Store, title = "Store Settings", subtitle = "Name, Logo & Banner") {
-                        rootNavController.navigate(Screen.StoreSettings.route)
-                    }
-                    ProfileOptionCard(icon = Icons.Default.Inventory, title = "Inventory", subtitle = "Manage products & stock") {
-                        navController.navigate(Screen.VendorInventory.route)
-                    }
+                    ProfileOptionCard(
+                        icon = Icons.Default.Store,
+                        title = "Store Settings",
+                        subtitle = "Customize name, logo & banner",
+                        onClick = onStoreSettingsClick
+                    )
+                    ProfileOptionCard(
+                        icon = Icons.Default.Inventory,
+                        title = "Inventory",
+                        subtitle = "Manage products & stock levels",
+                        onClick = onInventoryClick
+                    )
                 } else {
-                    ProfileOptionCard(icon = Icons.Default.LocationOn, title = "Saved Addresses", subtitle = "Home, Office & more") {
-                        rootNavController.navigate(Screen.AddressManagement.route)
-                    }
-                    ProfileOptionCard(icon = Icons.Default.Favorite, title = "My Wishlist", subtitle = "Your favorite grocery items") {
-                        rootNavController.navigate(Screen.Favorites.route)
-                    }
-                    ProfileOptionCard(icon = Icons.Default.History, title = "Order History", subtitle = "View all your past orders") {
-                        navController.navigate(Screen.Orders.route)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("App Preferences", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = JapandiCharcoal, modifier = Modifier.padding(bottom = 8.dp))
-
-                ProfileOptionCard(icon = Icons.Default.Notifications, title = "Notifications", subtitle = "Alerts, offers & status") {
-                    rootNavController.navigate(Screen.Notifications.route)
-                }
-                ProfileOptionCard(icon = Icons.Default.Language, title = "Language", subtitle = selectedLanguage) {
-                    showLanguageSheet = true
-                }
-                ProfileOptionCard(icon = Icons.AutoMirrored.Filled.Help, title = "Help Center", subtitle = "FAQ & customer support") {
-                    rootNavController.navigate(Screen.HelpCenter.route)
+                    ProfileOptionCard(
+                        icon = Icons.Default.LocationOn,
+                        title = "Saved Addresses",
+                        subtitle = "Home, Office & other locations",
+                        onClick = onSavedAddressesClick
+                    )
+                    ProfileOptionCard(
+                        icon = Icons.Default.Favorite,
+                        title = "My Wishlist",
+                        subtitle = "All your favorite grocery items",
+                        onClick = onWishlistClick
+                    )
+                    ProfileOptionCard(
+                        icon = Icons.Default.History,
+                        title = "Order History",
+                        subtitle = "Track and reorder past purchases",
+                        onClick = onOrderHistoryClick
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+                
+                Text(
+                    text = "App Preferences",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        color = JapandiCharcoal
+                    ),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                ProfileOptionCard(
+                    icon = Icons.Default.Notifications,
+                    title = "Notifications",
+                    subtitle = "Manage alerts & promo updates",
+                    onClick = onNotificationsClick
+                )
+                ProfileOptionCard(
+                    icon = Icons.Default.Language,
+                    title = "Language",
+                    subtitle = selectedLanguage,
+                    onClick = onLanguageClick
+                )
+                ProfileOptionCard(
+                    icon = Icons.AutoMirrored.Filled.Help,
+                    title = "Help Center",
+                    subtitle = "FAQs & customer support",
+                    onClick = onHelpCenterClick
+                )
+
+                Spacer(modifier = Modifier.height(40.dp))
 
                 Button(
-                    onClick = {
-                        viewModel.logout()
-                        rootNavController.navigate(Screen.Login.route) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    },
+                    onClick = onLogoutClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = JapandiError.copy(alpha = 0.1f), contentColor = JapandiError)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = JapandiError.copy(alpha = 0.08f),
+                        contentColor = JapandiError
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Logout", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "LOGOUT",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp
+                        )
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
 }
 
 @Composable
-fun VendorSwitchCard(isVendorMode: Boolean, onSwitch: () -> Unit) {
-    val gradientColors = if (isVendorMode) {
-        listOf(Color(0xFF1976D2), Color(0xFF2196F3))
-    } else {
-        listOf(JapandiSage, JapandiSageLight)
-    }
-
-    Card(
+private fun ProfileHeader(
+    name: String,
+    email: String,
+    imageUri: String?,
+    onEditImageClick: () -> Unit
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onSwitch),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .background(JapandiSage)
+            .padding(vertical = 32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(contentAlignment = Alignment.BottomEnd) {
+                Surface(
+                    modifier = Modifier
+                        .size(110.dp)
+                        .shadow(8.dp, CircleShape)
+                        .clickable { onEditImageClick() },
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.2f)
+                ) {
+                    if (imageUri != null) {
+                        AsyncImage(
+                            model = imageUri,
+                            contentDescription = "Profile Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("👤", fontSize = 56.sp)
+                        }
+                    }
+                }
+                
+                Surface(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .offset(x = (-4).dp, y = (-4).dp)
+                        .shadow(4.dp, CircleShape)
+                        .clickable { onEditImageClick() },
+                    shape = CircleShape,
+                    color = Color.White
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Edit",
+                            tint = JapandiSage,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = name,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
+            )
+            
+            Text(
+                text = email,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun VendorSwitchCard(isVendorMode: Boolean, onSwitch: () -> Unit) {
+    val gradientColors = if (isVendorMode) {
+        listOf(Color(0xFF2E7D32), Color(0xFF43A047))
+    } else {
+        listOf(JapandiSage, Color(0xFF7FA37C))
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSwitch)
+            .shadow(4.dp, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
     ) {
         Box(
             modifier = Modifier
                 .background(Brush.horizontalGradient(colors = gradientColors))
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -283,8 +305,7 @@ fun VendorSwitchCard(isVendorMode: Boolean, onSwitch: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f)),
+                        .background(Color.White.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -296,15 +317,14 @@ fun VendorSwitchCard(isVendorMode: Boolean, onSwitch: () -> Unit) {
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (isVendorMode) "Switch to Customer Mode" else "Switch to Vendor Mode",
+                        text = if (isVendorMode) "Customer Mode" else "Vendor Mode",
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        text = if (isVendorMode) "Start shopping for groceries" else "Manage your store and products",
+                        text = if (isVendorMode) "Switch to shop groceries" else "Manage your store & products",
                         color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
                 Icon(
@@ -318,50 +338,101 @@ fun VendorSwitchCard(isVendorMode: Boolean, onSwitch: () -> Unit) {
 }
 
 @Composable
-fun LanguageOption(name: String, isSelected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = name, style = MaterialTheme.typography.bodyLarge, color = JapandiCharcoal)
-        RadioButton(selected = isSelected, onClick = onClick, colors = RadioButtonDefaults.colors(selectedColor = JapandiSage))
-    }
-}
-
-@Composable
-fun ProfileOptionCard(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+private fun ProfileOptionCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White,
-        shadowElevation = 1.dp
+            .padding(vertical = 6.dp)
+            .clickable(onClick = onClick)
+            .shadow(1.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(JapandiSage.copy(alpha = 0.1f)),
+                    .size(44.dp)
+                    .background(JapandiSage.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = JapandiSage, modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = JapandiSage,
+                    modifier = Modifier.size(22.dp)
+                )
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = JapandiCharcoal)
-                Text(text = subtitle, fontSize = 11.sp, color = JapandiEarthyGray)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    color = JapandiCharcoal
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JapandiEarthyGray
+                )
             }
-            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = JapandiEarthyGray, modifier = Modifier.size(18.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = JapandiDivider,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
+}
+
+@Preview(showBackground = true, name = "Profile - Customer")
+@Composable
+fun PreviewProfileCustomer() {
+    ProfileContent(
+        userName = "Sarah Jenkins",
+        userEmail = "sarah.j@example.com",
+        isVendorMode = false,
+        onBackClick = {},
+        onImagePickerClick = {},
+        onToggleVendorMode = {},
+        onSavedAddressesClick = {},
+        onWishlistClick = {},
+        onOrderHistoryClick = {},
+        onStoreSettingsClick = {},
+        onInventoryClick = {},
+        onNotificationsClick = {},
+        onLanguageClick = {},
+        onHelpCenterClick = {},
+        onLogoutClick = {}
+    )
+}
+
+@Preview(showBackground = true, name = "Profile - Vendor")
+@Composable
+fun PreviewProfileVendor() {
+    ProfileContent(
+        userName = "Fresh Mart Admin",
+        userEmail = "admin@freshmart.com",
+        isVendorMode = true,
+        onBackClick = {},
+        onImagePickerClick = {},
+        onToggleVendorMode = {},
+        onSavedAddressesClick = {},
+        onWishlistClick = {},
+        onOrderHistoryClick = {},
+        onStoreSettingsClick = {},
+        onInventoryClick = {},
+        onNotificationsClick = {},
+        onLanguageClick = {},
+        onHelpCenterClick = {},
+        onLogoutClick = {}
+    )
 }
